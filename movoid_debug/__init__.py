@@ -6,6 +6,4 @@
 # Time          : 2024/4/14 16:15
 # Description   : 
 """
-
-if __name__ == '__main__':
-    pass
+from simple_debug import DEBUG, SimpleDebug

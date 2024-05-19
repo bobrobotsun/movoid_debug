@@ -4,7 +4,7 @@ with open("README.md", "r", encoding='utf-8') as fh:
     long_description = fh.read()
 
 setup(
-    name='',
+    name='movoid_debug',
     version='1.0.0',
     packages=find_packages(),
     url='',
@@ -14,5 +14,7 @@ setup(
     description='',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    install_requires=[],
+    install_requires=[
+        'movoid_function'
+    ],
 )
