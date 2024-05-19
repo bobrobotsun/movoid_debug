@@ -51,11 +51,14 @@ class SimpleDebug:
             return self.when_error()(_continue)
 
     def raise_all(self):
-        raise DebugError(self._error_list)
+        if self._error_list:
+            temp = self._error_list
+            self._error_list = []
+            raise DebugError(temp)
 
 
 class DebugError(Exception):
-    def __init__(self, error_list, *args):
+    def __init__(self, error_list: list, *args):
         all_info = ''
         for error in error_list:
             all_info += f'{error.func.__name__}{error.args}{error.kwargs}:{error.error}\n{error.traceback}\n'
