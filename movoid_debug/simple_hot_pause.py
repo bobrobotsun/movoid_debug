@@ -57,7 +57,7 @@ class SimpleHotPause:
             if '=' in text_arg:
                 key, value = text_arg.split('=', 1)
                 kwargs[key] = self.analyse_text(value)
-            else:
+            elif text_arg:
                 args.append(self.analyse_text(text_arg))
         try:
             re_value = self.func(*args, **kwargs)
@@ -100,11 +100,14 @@ class SimpleHotPause:
         self.end = 'error'
         self.tk.destroy()
 
-    def class_register(self):
+    def class_register(self, hot_pause=True, except_function=None):
+        except_function = [] if except_function is None else list(except_function)
+
         def dec(clazz: type):
-            for key, element in clazz.__dict__.items():
-                if inspect.isfunction(element):
-                    setattr(clazz, key, self.function_register(True)(element))
+            for key in dir(clazz):
+                element = getattr(clazz, key)
+                if inspect.isfunction(element) and not key.startswith('__') and key not in except_function:
+                    setattr(clazz, key, self.function_register(hot_pause)(element))
             return clazz
 
         return dec
@@ -134,6 +137,19 @@ class SimpleHotPause:
             return dec
         else:
             return self.function_register()(hot_pause)
+
+    def function_reset(self, hot_pause=False):
+        """
+        如果使用了class_register，但是部分函数又不需要这个功能，那就重新删除掉就行了
+        """
+        if isinstance(hot_pause, bool):
+            def dec(func):
+                setattr(func, 'hot_pause', hot_pause)
+                return func
+
+            return dec
+        else:
+            return self.function_reset()(hot_pause)
 
 
 HOT_PAUSE = SimpleHotPause()
