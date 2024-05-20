@@ -6,4 +6,5 @@
 # Time          : 2024/4/14 16:15
 # Description   : 
 """
-from simple_debug import DEBUG, SimpleDebug
+from .simple_debug import DEBUG, SimpleDebug
+from .simple_hot_pause import HOT_PAUSE, SimpleHotPause
