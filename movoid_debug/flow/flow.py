@@ -185,7 +185,6 @@ class FlowFunction(BasicFunction):
     def __call__(self, *args, **kwargs):
         if self.flow.test:
             test = TestFunction(self.func, self.flow, self)
-            self.son.append([test, 'function'])
             test(*args, **kwargs)
         else:
             try:
@@ -254,7 +253,7 @@ class TestFunction(BasicFunction):
             try:
                 self.args = args
                 self.kwargs = kwargs
-                # self.flow.set_current_function(self)
+                self.flow.set_current_function(self)
                 re_value = self.func(*args, **kwargs)
             except TestError as err:
                 if isinstance(self.parent, TestFunction):
@@ -270,7 +269,7 @@ class TestFunction(BasicFunction):
                 return self.re_value
             finally:
                 self.end = True
-                # self.flow.current_function_end()
+                self.flow.current_function_end()
 
     def self_text(self, indent=0):
         indent_str = '\t' * indent
@@ -302,3 +301,38 @@ def debug_function(func):
         temp(*args, **kwargs)
 
     return wrapper
+
+
+def debug_class_include(name_list):
+    """
+    作为装饰器使用，传入一个列表，列表内所有函数的名称均会被增加debug
+    """
+
+    def dec(cls):
+        for name in name_list:
+            if hasattr(cls, name):
+                func = getattr(cls, name)
+                if callable(func):
+                    setattr(cls, name, debug_function(func))
+        return cls
+
+    return dec
+
+
+def debug_class_exclude(name_list=None):
+    """
+    作为装饰器使用，传入一个列表，除了__开头和列表里的名称，所有的函数均会被增加debug
+    不输入的情况下，会包含所有的函数
+    """
+
+    name_list = [] if name_list is None else list(name_list)
+
+    def dec(cls):
+        for name in dir(cls):
+            if not name.startswith('__') and name not in name_list:
+                func = getattr(cls, name)
+                if callable(func):
+                    setattr(cls, name, debug_function(func))
+        return cls
+
+    return dec

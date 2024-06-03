@@ -123,8 +123,9 @@ class MainWindow(QMainWindow):
     def run_test(self, q):
         flow_tree: QTreeWidget = self.findChild(QTreeWidget, 'flow_tree')
         current_item = flow_tree.currentItem()
-        current_flow = getattr(current_item, '__flow')
-        current_flow(*current_flow.args, **current_flow.kwargs)
+        if current_item is not None and hasattr(current_item, '__flow'):
+            current_flow = getattr(current_item, '__flow')
+            current_flow(*current_flow.args, **current_flow.kwargs)
         self.refresh_ui()
 
     def run_continue(self, q):
