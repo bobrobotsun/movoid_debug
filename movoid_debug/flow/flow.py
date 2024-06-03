@@ -11,7 +11,7 @@ import traceback
 
 from movoid_function import Function, wraps
 
-from ..simple_ui import MainApp
+from ..simple_ui import MainApp, MainWindow
 
 
 class Flow:
@@ -22,11 +22,12 @@ class Flow:
         self.raise_error = 0
         self.error_type = 0
         self.check_error_type()
+        self.app = None
 
     def check_error_type(self):
         for i in sys.argv:
-            if i.startswith('_debug='):
-                temp = i[7:]
+            if i.startswith('__debug='):
+                temp = i[8:]
                 if temp == '1':
                     self.error_type = 1
 
@@ -53,8 +54,10 @@ class Flow:
         self.test = False
 
     def when_error_debug(self):
-        debug_app = MainApp(self)
-        debug_app.exec()
+        if self.app is None:
+            self.app = MainApp()
+        self.app.main = MainWindow(self)
+        self.app.exec()
 
     def when_error_cmd(self):
         print('错误发生：')
@@ -85,6 +88,21 @@ class BasicFunction:
         self.error = None
         self.traceback = ''
         self.error_mode = {}
+        self.end = False
+        self.has_return = False
+        self.re_value = None
+
+    def result(self, simple=False, tostring=False):
+        if self.has_return:
+            re_value = str(self.re_value) if tostring else self.re_value
+        elif self.traceback:
+            if simple:
+                re_value = f'{type(self.error).__name__}:{self.error}' if tostring else self.error
+            else:
+                re_value = self.traceback
+        else:
+            re_value = 'not done yet'
+        return re_value
 
     def add_son(self, son, son_type='function'):
         """
@@ -156,12 +174,9 @@ class FlowFunction(BasicFunction):
             self.include_error = include
         self.args = []
         self.kwargs = {}
-        self.has_return = False
-        self.re_value = None
         self.flow = flow
         self.parent = flow.current_function
         self.raise_error = False
-        self.end = False
         self.debug_mode = {
             0: True,
             1: True
@@ -169,7 +184,7 @@ class FlowFunction(BasicFunction):
 
     def __call__(self, *args, **kwargs):
         if self.flow.test:
-            test = TestFunction(self.func, self.flow)
+            test = TestFunction(self.func, self.flow, self)
             self.son.append([test, 'function'])
             test(*args, **kwargs)
         else:
@@ -206,6 +221,7 @@ class FlowFunction(BasicFunction):
                 self.re_value = re_value
                 return self.re_value
             finally:
+                self.end = True
                 self.flow.current_function_end()
 
     def self_text(self, indent=0):
@@ -224,34 +240,37 @@ class FlowFunction(BasicFunction):
 class TestFunction(BasicFunction):
     func_type = 'test'
 
-    def __init__(self, func, flow):
+    def __init__(self, func, flow, ori):
         super().__init__()
         self.func = func
         self.flow = flow
+        self.ori = ori
         self.parent = self.flow.current_function
-        self.has_return = False
-        self.re_value = None
-        self.end = False
 
     def __call__(self, *args, **kwargs):
-        try:
-            self.args = args
-            self.kwargs = kwargs
-            re_value = self.func(*args, **kwargs)
-        except TestError as err:
-            if isinstance(self.parent, TestFunction):
-                raise err
-        except Exception as err:
-            self.err = err
-            self.traceback = traceback.format_exc()
-            if isinstance(self.parent, TestFunction):
-                raise TestError
+        if self.end:
+            self.ori(*args, **kwargs)
         else:
-            self.has_return = True
-            self.re_value = re_value
-            return self.re_value
-        finally:
-            self.end = True
+            try:
+                self.args = args
+                self.kwargs = kwargs
+                # self.flow.set_current_function(self)
+                re_value = self.func(*args, **kwargs)
+            except TestError as err:
+                if isinstance(self.parent, TestFunction):
+                    raise err
+            except Exception as err:
+                self.error = err
+                self.traceback = traceback.format_exc()
+                if isinstance(self.parent, TestFunction):
+                    raise TestError
+            else:
+                self.has_return = True
+                self.re_value = re_value
+                return self.re_value
+            finally:
+                self.end = True
+                # self.flow.current_function_end()
 
     def self_text(self, indent=0):
         indent_str = '\t' * indent
@@ -274,3 +293,12 @@ class TestError(Exception):
 
 
 FLOW = Flow()
+
+
+def debug_function(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        temp = FlowFunction(func, FLOW)
+        temp(*args, **kwargs)
+
+    return wrapper

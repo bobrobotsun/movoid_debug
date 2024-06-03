@@ -12,10 +12,11 @@ from .main_window import MainWindow
 
 
 class MainApp:
-    def __init__(self, flow):
+    def __init__(self):
         self.app = QApplication()
-        self.main = MainWindow(flow)
 
     def exec(self):
         return self.app.exec()
 
+    def quit(self):
+        return self.app.quit()

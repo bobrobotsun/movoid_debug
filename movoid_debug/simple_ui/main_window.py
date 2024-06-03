@@ -82,14 +82,7 @@ class MainWindow(QMainWindow):
                 child.setText(1, i[0].func.__name__)
                 child.setText(2, str(i[0].args))
                 child.setText(3, str(i[0].kwargs))
-                if i[0].end:
-                    if i[0].has_return:
-                        child_4_str = str(i[0].re_value)
-                    else:
-                        child_4_str = str(i[0].err)
-                else:
-                    child_4_str = '未结束'
-                child.setText(4, child_4_str)
+                child.setText(4, str(i[0].result(True, tostring=True)))
                 setattr(child, '__flow', i[0])
                 flow_tree.addTopLevelItem(child)
                 self.refresh_flow_tree(child, i[0])
@@ -99,14 +92,7 @@ class MainWindow(QMainWindow):
                 child.setText(1, str(i[0]))
                 flow_tree.addTopLevelItem(child)
         current_function = self.flow.current_function
-        if current_function.end:
-            if current_function.has_return:
-                print_str = str(current_function.re_value)
-            else:
-                print_str = str(current_function.traceback)
-        else:
-            print_str = '未结束'
-        print_text.setText(print_str)
+        print_text.setText(str(current_function.result(tostring=True)))
         flow_tree.expandAll()
 
     def refresh_flow_tree(self, top_item, flow):
@@ -117,14 +103,7 @@ class MainWindow(QMainWindow):
                 child.setText(1, i[0].func.__name__)
                 child.setText(2, str(i[0].args))
                 child.setText(3, str(i[0].kwargs))
-                if i[0].end:
-                    if i[0].has_return:
-                        child_4_str = str(i[0].re_value)
-                    else:
-                        child_4_str = str(i[0].err)
-                else:
-                    child_4_str = '未结束'
-                child.setText(4, child_4_str)
+                child.setText(4, str(i[0].result(True, tostring=True)))
                 setattr(child, '__flow', i[0])
                 top_item.addChild(child)
                 self.refresh_flow_tree(child, i[0])
@@ -139,14 +118,7 @@ class MainWindow(QMainWindow):
         current_text: QTextEdit = self.findChild(QTextEdit, 'current_text')
         current_item = flow_tree.currentItem()
         current_flow = getattr(current_item, '__flow')
-        if current_flow.end:
-            if current_flow.has_return:
-                current_str = str(current_flow.re_value)
-            else:
-                current_str = str(current_flow.traceback)
-        else:
-            current_str = '未结束'
-        current_text.setText(current_str)
+        current_text.setText(str(current_flow.result(tostring=True)))
 
     def run_test(self, q):
         flow_tree: QTreeWidget = self.findChild(QTreeWidget, 'flow_tree')
