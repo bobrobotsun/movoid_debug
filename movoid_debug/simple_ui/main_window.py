@@ -7,6 +7,7 @@
 # Description   : 
 """
 from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QGridLayout, QTreeWidget, QTextEdit, QHBoxLayout, QVBoxLayout, QPushButton, QTreeWidgetItem
+from .value_set_window import ValueSetWindow
 
 
 class MainWindow(QMainWindow):
@@ -26,13 +27,16 @@ class MainWindow(QMainWindow):
         main_table.setLayout(main_gird)
         main_gird.setColumnStretch(0, 4)
         main_gird.setColumnStretch(1, 2)
-        main_gird.setColumnStretch(2, 1)
+        main_gird.setColumnStretch(2, 3)
+        main_gird.setColumnStretch(3, 1)
+        main_gird.setRowStretch(0, 1)
+        main_gird.setRowStretch(1, 2)
 
         flow_tree = QTreeWidget(main_table)
         flow_tree.setObjectName('flow_tree')
         main_gird.addWidget(flow_tree, 0, 0, 2, 1)
         flow_tree.setHeaderLabels(['type', 'func', 'args', 'kwargs', 'status'])
-        flow_tree.itemClicked.connect(self.refresh_current_text)
+        flow_tree.itemClicked.connect(self.click_flow_refresh_ui)
 
         print_text = QTextEdit(main_table)
         print_text.setObjectName('print_text')
@@ -40,7 +44,18 @@ class MainWindow(QMainWindow):
 
         current_text = QTextEdit(main_table)
         current_text.setObjectName('current_text')
-        main_gird.addWidget(current_text, 1, 1)
+        main_gird.addWidget(current_text, 1, 1, 2, 1)
+
+        arg_tree = QTreeWidget(main_table)
+        arg_tree.setObjectName('arg_tree')
+        main_gird.addWidget(arg_tree, 0, 2, 1, 1)
+        arg_tree.setHeaderLabels(['arg', 'name', 'type', 'value'])
+        arg_tree.itemDoubleClicked.connect(lambda: self.change_arg_tree_value())
+
+        global_tree = QTreeWidget(main_table)
+        global_tree.setObjectName('global_tree')
+        main_gird.addWidget(global_tree, 1, 2, 2, 1)
+        global_tree.setHeaderLabels(['key', 'type', 'value'])
 
         run_widget = QWidget(main_table)
         end_widget = QWidget(main_table)
@@ -71,31 +86,21 @@ class MainWindow(QMainWindow):
         run_grid.addStretch(10)
 
     def refresh_ui(self):
+        self.refresh_flow_tree()
+        self.refresh_global_tree()
+
+    def refresh_flow_tree(self):
         flow_tree: QTreeWidget = self.findChild(QTreeWidget, 'flow_tree')
         print_text: QTextEdit = self.findChild(QTextEdit, 'print_text')
         flow_tree.clear()
-        main = self.flow.main
-        for i in main.son:
-            if i[1] == 'function':
-                child = QTreeWidgetItem(flow_tree)
-                child.setText(0, 'function')
-                child.setText(1, i[0].func.__name__)
-                child.setText(2, str(i[0].args))
-                child.setText(3, str(i[0].kwargs))
-                child.setText(4, str(i[0].result(True, tostring=True)))
-                setattr(child, '__flow', i[0])
-                flow_tree.addTopLevelItem(child)
-                self.refresh_flow_tree(child, i[0])
-            else:
-                child = QTreeWidgetItem(flow_tree)
-                child.setText(0, 'log')
-                child.setText(1, str(i[0]))
-                flow_tree.addTopLevelItem(child)
+        self.refresh_flow_tree_item(flow_tree, self.flow.main)
         current_function = self.flow.current_function
         print_text.setText(str(current_function.result(tostring=True)))
         flow_tree.expandAll()
 
-    def refresh_flow_tree(self, top_item, flow):
+    def refresh_flow_tree_item(self, top_item, flow):
+        arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')
+        select_flow = getattr(arg_tree, 'flow', None)
         for i in flow.son:
             if i[1] == 'function':
                 child = QTreeWidgetItem(top_item)
@@ -105,28 +110,88 @@ class MainWindow(QMainWindow):
                 child.setText(3, str(i[0].kwargs))
                 child.setText(4, str(i[0].result(True, tostring=True)))
                 setattr(child, '__flow', i[0])
-                top_item.addChild(child)
-                self.refresh_flow_tree(child, i[0])
+                self.refresh_flow_tree_item(child, i[0])
+                if i[0] == select_flow:
+                    self.findChild(QTreeWidget, 'flow_tree').setCurrentItem(child)
             else:
                 child = QTreeWidgetItem(top_item)
                 child.setText(0, 'log')
                 child.setText(1, str(i[0]))
-                top_item.addChild(child)
 
-    def refresh_current_text(self, q):
+    def click_flow_refresh_ui(self, q):
         flow_tree: QTreeWidget = self.findChild(QTreeWidget, 'flow_tree')
         current_text: QTextEdit = self.findChild(QTextEdit, 'current_text')
+        arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')
+        arg_tree.clear()
         current_item = flow_tree.currentItem()
         current_flow = getattr(current_item, '__flow')
         current_text.setText(str(current_flow.result(tostring=True)))
+        self.refresh_arg_tree(current_flow)
+
+    def refresh_arg_tree(self, flow, kwarg_value=None):
+        kwarg_value = flow.kwarg_value if kwarg_value is None else kwarg_value
+        arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')
+        setattr(arg_tree, 'flow', flow)
+        setattr(arg_tree, 'kwarg_value', kwarg_value)
+        arg_tree.clear()
+        for k, v in kwarg_value['arg'].items():
+            temp = QTreeWidgetItem(arg_tree)
+            temp.setText(0, 'arg')
+            temp.setText(1, str(k))
+            temp.setText(2, type(v).__name__)
+            temp.setText(3, str(v))
+            setattr(temp, 'kwarg_value', ['arg', k, v])
+        if 'args' in kwarg_value:
+            args_name = list(kwarg_value['args'].keys())[0]
+            args_list = kwarg_value['args'][args_name]
+            for k, v in enumerate(args_list):
+                temp = QTreeWidgetItem(arg_tree)
+                temp.setText(0, 'args')
+                temp.setText(1, f'{args_name}[{k}]')
+                temp.setText(2, type(v).__name__)
+                temp.setText(3, str(v))
+                setattr(temp, 'kwarg_value', ['args', args_name, k, v])
+        for k, v in kwarg_value['kwarg'].items():
+            temp = QTreeWidgetItem(arg_tree)
+            temp.setText(0, 'kwarg')
+            temp.setText(1, str(k))
+            temp.setText(2, type(v).__name__)
+            temp.setText(3, str(v))
+            setattr(temp, 'kwarg_value', ['kwarg', k, v])
+        if 'kwargs' in kwarg_value:
+            kwargs_name = list(kwarg_value['kwargs'].keys())[0]
+            kwargs_dict = kwarg_value['kwargs'][kwargs_name]
+            for k, v in kwargs_dict.items():
+                temp = QTreeWidgetItem(arg_tree)
+                temp.setText(0, 'kwargs')
+                temp.setText(1, f'{kwargs_name}[{k}]')
+                temp.setText(2, type(v).__name__)
+                temp.setText(3, str(v))
+                setattr(temp, 'kwarg_value', ['kwargs', kwargs_name, k, v])
+
+    def refresh_global_tree(self):
+        global_value = globals()
+        global_tree: QTreeWidget = self.findChild(QTreeWidget, 'global_tree')
+        for k, v in global_value.items():
+            temp = QTreeWidgetItem(global_tree)
+            temp.setText(0, k)
+            temp.setText(1, type(v).__name__)
+            temp.setText(2, str(v))
 
     def run_test(self, q):
-        flow_tree: QTreeWidget = self.findChild(QTreeWidget, 'flow_tree')
-        current_item = flow_tree.currentItem()
-        if current_item is not None and hasattr(current_item, '__flow'):
-            current_flow = getattr(current_item, '__flow')
-            current_flow(*current_flow.args, **current_flow.kwargs)
-        self.refresh_ui()
+        arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')
+        if hasattr(arg_tree, 'flow'):
+            flow = getattr(arg_tree, 'flow')
+            kwarg_value = getattr(arg_tree, 'kwarg_value')
+            args = [_v for _k, _v in kwarg_value['arg'].items()]
+            if 'args' in kwarg_value:
+                args += [*list(kwarg_value['args'].values())[0]]
+            kwargs = {_k: _v for _k, _v in kwarg_value['kwarg'].items()}
+            if 'kwargs' in kwarg_value:
+                for k, v in list(kwarg_value['kwargs'].values())[0].items():
+                    kwargs[k] = v
+            flow(*args, **kwargs)
+            self.refresh_ui()
 
     def run_continue(self, q):
         self.close()
@@ -134,3 +199,17 @@ class MainWindow(QMainWindow):
     def run_raise(self, q):
         self.flow.raise_error = -1
         self.close()
+
+    def change_arg_tree_value(self):
+        arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')
+        flow = getattr(arg_tree, 'flow')
+        kwarg_value = getattr(arg_tree, 'kwarg_value')
+        current_item = arg_tree.currentItem()
+        current_value = getattr(current_item, 'kwarg_value')
+        new_value = ValueSetWindow.get_value(current_value[-1])
+        if new_value != current_value[-1]:
+            temp = kwarg_value
+            for i in current_value[:-2]:
+                temp = temp[i]
+            temp[current_value[-2]] = new_value
+            self.refresh_arg_tree(flow, kwarg_value)

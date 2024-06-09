@@ -9,7 +9,7 @@
 import sys
 import traceback
 
-from movoid_function import Function, wraps
+from movoid_function import Function, wraps, analyse_args_value_from_function
 
 from ..simple_ui import MainApp, MainWindow
 
@@ -174,6 +174,7 @@ class FlowFunction(BasicFunction):
             self.include_error = include
         self.args = []
         self.kwargs = {}
+        self.kwarg_value = {}
         self.flow = flow
         self.parent = flow.current_function
         self.raise_error = False
@@ -190,6 +191,7 @@ class FlowFunction(BasicFunction):
             try:
                 self.args = args
                 self.kwargs = kwargs
+                self.kwarg_value = analyse_args_value_from_function(self.func, *args, **kwargs)
                 self.flow.set_current_function(self)
                 re_value = self.func(*self.args, **self.kwargs)
             except self.exclude_error as err:
@@ -253,6 +255,7 @@ class TestFunction(BasicFunction):
             try:
                 self.args = args
                 self.kwargs = kwargs
+                self.kwarg_value = analyse_args_value_from_function(self.func, *args, **kwargs)
                 self.flow.set_current_function(self)
                 re_value = self.func(*args, **kwargs)
             except TestError as err:
