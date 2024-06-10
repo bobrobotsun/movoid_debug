@@ -56,6 +56,7 @@ class MainWindow(QMainWindow):
         global_tree.setObjectName('global_tree')
         main_gird.addWidget(global_tree, 1, 2, 2, 1)
         global_tree.setHeaderLabels(['key', 'type', 'value'])
+        global_tree.itemExpanded.connect(self.expand_global_tree_to_show_dir)
 
         run_widget = QWidget(main_table)
         end_widget = QWidget(main_table)
@@ -141,6 +142,7 @@ class MainWindow(QMainWindow):
             temp.setText(2, type(v).__name__)
             temp.setText(3, str(v))
             setattr(temp, 'kwarg_value', ['arg', k, v])
+            temp.setExpanded(True)
         if 'args' in kwarg_value:
             args_name = list(kwarg_value['args'].keys())[0]
             args_list = kwarg_value['args'][args_name]
@@ -173,10 +175,13 @@ class MainWindow(QMainWindow):
         global_value = globals()
         global_tree: QTreeWidget = self.findChild(QTreeWidget, 'global_tree')
         for k, v in global_value.items():
-            temp = QTreeWidgetItem(global_tree)
-            temp.setText(0, k)
-            temp.setText(1, type(v).__name__)
-            temp.setText(2, str(v))
+            if not k.startswith('__'):
+                temp = QTreeWidgetItem(global_tree)
+                temp.setText(0, k)
+                temp.setText(1, type(v).__name__)
+                temp.setText(2, str(v))
+                setattr(temp, '__value', v)
+                self.empty_tree_item_child(temp)
 
     def run_test(self, q):
         arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')
@@ -213,3 +218,29 @@ class MainWindow(QMainWindow):
                 temp = temp[i]
             temp[current_value[-2]] = new_value
             self.refresh_arg_tree(flow, kwarg_value)
+
+    def empty_tree_item_child(self, item):
+        value = getattr(item, '__value')
+        if type(value) in (int, float, bool, str, list, dict) or value is None:
+            setattr(item, '__expand', False)
+        else:
+            temp = QTreeWidgetItem(item)
+            setattr(temp, '__delete', True)
+
+    def expand_global_tree_to_show_dir(self, item: QTreeWidgetItem):
+        if getattr(item, '__expand', True):
+            for i in range(item.childCount() - 1, -1, -1):
+                tar_item = item.child(i)
+                if getattr(tar_item, '__delete', False):
+                    item.removeChild(tar_item)
+            value = getattr(item, '__value')
+            for k in dir(value):
+                if not k.startswith('__'):
+                    v = getattr(value, k)
+                    if not callable(v):
+                        temp = QTreeWidgetItem(item)
+                        temp.setText(0, k)
+                        temp.setText(1, type(v).__name__)
+                        temp.setText(2, str(v))
+                        setattr(temp, '__value', v)
+                        self.empty_tree_item_child(temp)

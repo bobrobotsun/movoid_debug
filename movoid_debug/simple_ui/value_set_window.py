@@ -6,6 +6,7 @@
 # Time          : 2024/6/9 23:13
 # Description   : 
 """
+import inspect
 import traceback
 
 from PySide6.QtWidgets import QWidget, QGridLayout, QApplication, QRadioButton, QErrorMessage, QVBoxLayout, QTextEdit, QTreeWidget, QHBoxLayout, QPushButton, QMessageBox, QDialog, QTreeWidgetItem
@@ -16,14 +17,14 @@ class ValueSetWindow(QDialog):
         super().__init__()
         self.ori_value = ori_value
         self.get_value = lambda: ''
-        self.re_value = None
+        self.re_value = self.ori_value
         self.args = []
         self.init_ui()
         self.init_ori_value()
 
     def init_ui(self):
         screen_rect = QApplication.primaryScreen().geometry()
-        self.setGeometry(int(screen_rect.width() * 0.3), int(screen_rect.height() * 0.4), int(screen_rect.width() * 0.4), int(screen_rect.height() * 0.2))
+        self.setGeometry(int(screen_rect.width() * 0.3), int(screen_rect.height() * 0.3), int(screen_rect.width() * 0.4), int(screen_rect.height() * 0.4))
         main_grid = QGridLayout(self)
         main_grid.setObjectName('main_grid')
         self.setLayout(main_grid)
@@ -43,6 +44,7 @@ class ValueSetWindow(QDialog):
         arg_tree.setObjectName('arg_tree')
         arg_tree.setHeaderLabels(['from', 'name', 'type', 'value'])
         input_grid.addWidget(arg_tree, 0, 1)
+        arg_tree.itemExpanded.connect(self.expand_object_to_show_dir)
 
         type_widget = QWidget(self)
         main_grid.addWidget(type_widget, 0, 0)
@@ -193,15 +195,17 @@ class ValueSetWindow(QDialog):
             temp.setText(0, 'ori')
             temp.setText(2, type(i).__name__)
             temp.setText(3, str(i))
-            setattr(temp, 'value', i)
+            setattr(temp, '__value', i)
             arg_tree.setCurrentItem(temp)
+            self.empty_tree_item_child(temp)
         for k, v in global_value.items():
             if not k.startswith('__'):
                 temp = QTreeWidgetItem(arg_tree)
                 temp.setText(1, str(k))
                 temp.setText(2, type(v).__name__)
                 temp.setText(3, str(v))
-                setattr(temp, 'value', v)
+                setattr(temp, '__value', v)
+                self.empty_tree_item_child(temp)
 
     def end_ok(self):
         try:
@@ -246,7 +250,7 @@ class ValueSetWindow(QDialog):
     def _get_object(self):
         arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')
         tar_arg = arg_tree.currentItem()
-        return getattr(tar_arg, 'value')
+        return getattr(tar_arg, '__value')
 
     def get_re_value(self):
         print('func', self, self.re_value)
@@ -258,3 +262,31 @@ class ValueSetWindow(QDialog):
         temp.show()
         temp.exec()
         return temp.re_value
+
+    def empty_tree_item_child(self, item):
+        value = getattr(item, '__value')
+        if type(value) in (int, float, bool, str, list, dict) or value is None:
+            setattr(item, '__expand', False)
+        else:
+            temp = QTreeWidgetItem(item)
+            setattr(temp, '__delete', True)
+            temp = QTreeWidgetItem(item)
+            setattr(temp, '__delete', True)
+
+    def expand_object_to_show_dir(self, item: QTreeWidgetItem):
+        if getattr(item, '__expand', True):
+            for i in range(item.childCount() - 1, -1, -1):
+                tar_item = item.child(i)
+                if getattr(tar_item, '__delete'):
+                    item.removeChild(tar_item)
+            value = getattr(item, '__value')
+            for k in dir(value):
+                if not k.startswith('__'):
+                    v = getattr(value, k)
+                    if not callable(v):
+                        temp = QTreeWidgetItem(item)
+                        temp.setText(1, k)
+                        temp.setText(2, type(v).__name__)
+                        temp.setText(3, str(v))
+                        setattr(temp, '__value', v)
+                        self.empty_tree_item_child(temp)
