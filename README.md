@@ -1,1 +1,9 @@
-This is a simple program for developer to 
+这个是一系列函数、类的装饰器，在运行时，如果报错，那么将会进入调试状态
+默认情况下：
+1、将所有Exception raise 出去，不做任何处理
+2、将Exception保存下来，可以在任意的地方调用某个方法抛出
+
+debug状态下：
+0、直接进入debug模式，弹出窗口，并进行操作
+1、将所有Exception raise 出去，不做任何处理
+2、将Exception保存下来，可以在任意的地方调用某个方法抛出

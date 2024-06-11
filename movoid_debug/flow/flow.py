@@ -9,7 +9,7 @@
 import sys
 import traceback
 
-from movoid_function import Function, wraps, analyse_args_value_from_function
+from movoid_function import Function, wraps, analyse_args_value_from_function, wraps_ori
 
 from ..simple_ui import MainApp, MainWindow
 
@@ -20,16 +20,26 @@ class Flow:
         self.current_function = self.main
         self.test = False
         self.raise_error = 0
-        self.error_type = 0
-        self.check_error_type()
+        self.debug_type = 0
+        self.debug_flag = 1
+        self.init_debug_param()
         self.app = None
+        self.continue_error_list = []
 
-    def check_error_type(self):
+    def init_debug_param(self):
         for i in sys.argv:
             if i.startswith('__debug='):
-                temp = i[8:]
-                if temp == '1':
-                    self.error_type = 1
+                if i[8:] in ('1', 'debug'):
+                    self.debug_type = 1
+                else:
+                    self.debug_type = 0
+            elif i.startswith('__debug_flag='):
+                if i[13:] in ('0', 'debug'):
+                    self.debug_flag = 0
+                elif i[13:] in ('2',):
+                    self.debug_flag = 2
+                else:
+                    self.debug_flag = 1
 
     @property
     def text(self):
@@ -45,37 +55,63 @@ class Flow:
         else:
             self.current_function = self.current_function.parent
 
-    def when_error(self):
+    def when_error(self, *debug_flag, err=None, traceback_str=None):
+        """
+        这是供FlowFunction反调的函数，保证当前的处理模式是预选模式
+        :param debug_flag: 这是个传入的参数，就是把自己的参数传进去
+        :param err: 把故障传上来
+        :param traceback_str: 把traceback信息传上来
+        :return: 如果return 1 则是需要continue。如果return 2 则是需要 raise Error
+        """
         self.test = True
-        if self.error_type == -1:
-            self.when_error_cmd()
-        elif self.error_type == 1:
-            self.when_error_debug()
+        flag = self.analyse_target_debug_flag(*debug_flag)
+        if flag == 0:
+            re_value = self.when_error_debug()
+        else:
+            re_value = flag
+            if flag == 2:
+                self.continue_error_list.append([err, traceback_str])
         self.test = False
+        return re_value
 
     def when_error_debug(self):
+        """
+        调出一个debug窗口来进行debug，编辑请前往main_window.py进行
+        """
         if self.app is None:
             self.app = MainApp()
         self.app.main = MainWindow(self)
         self.app.exec()
+        return 1 if self.raise_error == 0 else 2
 
-    def when_error_cmd(self):
-        print('错误发生：')
-        while True:
-            print('以下是当前流程')
-            print(self.text)
-            input_str = input('请问如何处理？1、重新测试；2、弹出错误到上一级；3、弹出错误直至退出；其他、以当前的返回值返回：')
-            if input_str == '1':
-                self.current_function(*self.args, **self.kwargs)
-            elif input_str == '2':
-                self.raise_error = 1
-                break
-            elif input_str == '3':
-                self.raise_error = -1
-                break
-            else:
-                self.raise_error = False
-                break
+    def analyse_target_debug_flag(self, default_flag=None, *debug_flag):
+        """
+        解析当前的函数对应的debug flag是多少
+        优先看是否设置，没有设置就按照debug_type==0时的设置，如果也没有设置，那就继承flow的设置
+        当debug_type为0时，flag 0会被强制转换为1
+        :param default_flag: 保证在无设置时，可以继承flow的设置
+        :param debug_flag: 其他debug_type时的设置
+        :return: 返回具体的flag
+        """
+        debug_flag = [default_flag, *debug_flag]
+        ind = self.debug_type
+        tar_ind_flag = debug_flag[ind] if len(debug_flag) > ind else None
+        tar_flag = debug_flag[0] if tar_ind_flag is None else tar_ind_flag
+        flag = self.debug_flag if tar_flag is None else tar_flag
+        flag = max(0, min(2, flag))
+        if self.debug_type == 0:
+            flag = max(1, flag)
+        return flag
+
+    def release_all_pass_error(self, raise_it=True):
+        """
+        如果之前曾经continue掉一部分error，那么可以通过调用这个函数，来将所有的error释放出来。
+        :param raise_it: 是否把这些Error统一在一起raise 一个Error出来
+        """
+        if raise_it and self.continue_error_list:
+            temp = self.continue_error_list
+            self.continue_error_list = []
+            raise DebugError(*temp)
 
 
 class BasicFunction:
@@ -156,13 +192,13 @@ class MainFunction(BasicFunction):
 class FlowFunction(BasicFunction):
     func_type = 'function'
 
-    def __init__(self, func, flow, include=None, exclude=None, error_function=None, error_args=None, error_kwargs=None):
+    def __init__(self, func, flow, include=None, exclude=None, teardown_function=None):
         """
 
         """
         super().__init__()
         self.func = func
-        self.error_func = Function(error_function, error_args, error_kwargs)
+        self.teardown_function = FlowFunction(Function(teardown_function), flow, include=include, exclude=exclude, teardown_function=None)
         if include is None:
             self.include_error = Exception
             if exclude is None:
@@ -202,18 +238,8 @@ class FlowFunction(BasicFunction):
                     raise err
                 self.error = err
                 self.traceback = traceback.format_exc()
-                if self.debug_mode.get(self.flow.error_type, False):
-                    if self.flow.error_type in (-1, 1):
-                        self.flow.when_error()
-                        if self.flow.raise_error != 0:
-                            self.flow.raise_error -= 1
-                            raise err
-                        else:
-                            self.has_return = True
-                            return self.re_value
-                    else:
-                        self.error_func()
-                else:
+                error_flag = self.flow.when_error(kwargs.get('__debug_default', None), kwargs.get('__debug_debug'), err=self.error, traceback_str=self.traceback)
+                if error_flag == 1:
                     raise err
             except Exception as err:
                 raise err
@@ -222,6 +248,7 @@ class FlowFunction(BasicFunction):
                 self.re_value = re_value
                 return self.re_value
             finally:
+                self.teardown_function(args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, traceback_str=self.traceback)
                 self.end = True
                 self.flow.current_function_end()
 
@@ -299,7 +326,7 @@ FLOW = Flow()
 
 def debug_function(func):
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, __debug_default=0, __debug_debug=1, **kwargs):
         temp = FlowFunction(func, FLOW)
         temp(*args, **kwargs)
 
@@ -339,3 +366,30 @@ def debug_class_exclude(name_list=None):
         return cls
 
     return dec
+
+
+class DebugError(Exception):
+    def __init__(self, *args):
+        self.args = args
+
+    def __str__(self):
+        re_str = ''
+        for err, trace in self.args:
+            re_str += f'{type(err).__name__}\n'
+        re_str.strip('\n')
+        return re_str
+
+    def traceback(self):
+        re_str = ''
+        for err, trace in self.args:
+            re_str += f'{trace}\n'
+        re_str.strip('\n')
+        return re_str
+
+
+def teardown(func):
+    @wraps_ori(func)
+    def wrapper(args, kwargs, re_value, error, traceback_str):
+        pass
+
+    return wrapper
