@@ -80,10 +80,15 @@ class MainWindow(QMainWindow):
         run_continue_button.clicked.connect(self.run_continue)
         run_grid.addStretch(1)
 
-        run_raise_button = QPushButton('忽略错误并raise error', main_table)
+        run_raise_button = QPushButton('raise错误', main_table)
         run_raise_button.setObjectName('run_raise_button')
         run_grid.addWidget(run_raise_button)
         run_raise_button.clicked.connect(self.run_raise)
+
+        run_raise_one_button = QPushButton('raise错误至上一层', main_table)
+        run_raise_one_button.setObjectName('run_raise_one_button')
+        run_grid.addWidget(run_raise_one_button)
+        run_raise_one_button.clicked.connect(self.run_raise_one)
 
         run_grid.addStretch(10)
 
@@ -205,6 +210,10 @@ class MainWindow(QMainWindow):
 
     def run_raise(self, q):
         self.flow.raise_error = -1
+        self.close()
+
+    def run_raise_one(self, q):
+        self.flow.raise_error = 1
         self.close()
 
     def change_arg_tree_value(self):

@@ -21,7 +21,7 @@ class Flow:
         self.test = False
         self.raise_error = 0
         self.debug_type = 0
-        self.debug_flag = 1
+        self.debug_flag = 0
         self.init_debug_param()
         self.app = None
         self.continue_error_list = []
@@ -82,7 +82,7 @@ class Flow:
             self.app = MainApp()
         self.app.main = MainWindow(self)
         self.app.exec()
-        return 1 if self.raise_error == 0 else 2
+        return 2 if self.raise_error == 0 else 1
 
     def analyse_target_debug_flag(self, default_flag=None, *debug_flag):
         """
@@ -198,7 +198,7 @@ class FlowFunction(BasicFunction):
         """
         super().__init__()
         self.func = func
-        self.teardown_function = FlowFunction(Function(teardown_function), flow, include=include, exclude=exclude, teardown_function=None)
+        self.teardown_function = Function() if teardown_function is None else FlowFunction(Function(teardown_function), flow, include=include, exclude=exclude, teardown_function=None)
         if include is None:
             self.include_error = Exception
             if exclude is None:
@@ -224,6 +224,8 @@ class FlowFunction(BasicFunction):
             test = TestFunction(self.func, self.flow, self)
             test(*args, **kwargs)
         else:
+            debug_default = kwargs.pop('__debug_default', None)
+            debug_debug = kwargs.pop('__debug_debug', None)
             try:
                 self.args = args
                 self.kwargs = kwargs
@@ -238,8 +240,9 @@ class FlowFunction(BasicFunction):
                     raise err
                 self.error = err
                 self.traceback = traceback.format_exc()
-                error_flag = self.flow.when_error(kwargs.get('__debug_default', None), kwargs.get('__debug_debug'), err=self.error, traceback_str=self.traceback)
+                error_flag = self.flow.when_error(debug_default, debug_debug, err=self.error, traceback_str=self.traceback)
                 if error_flag == 1:
+                    self.flow.raise_error -= 1
                     raise err
             except Exception as err:
                 raise err
@@ -324,13 +327,24 @@ class TestError(Exception):
 FLOW = Flow()
 
 
-def debug_function(func):
-    @wraps(func)
-    def wrapper(*args, __debug_default=0, __debug_debug=1, **kwargs):
-        temp = FlowFunction(func, FLOW)
-        temp(*args, **kwargs)
+def debug_function(debug_default=None, debug_debug=None):
+    if callable(debug_default):
+        return debug_function()(debug_default)
 
-    return wrapper
+    def dec(func):
+        if getattr(func, '__debug', False):
+            return func
+        else:
+            @wraps(func)
+            def wrapper(*args, __debug_default=debug_default, __debug_debug=debug_debug, **kwargs):
+                temp = FlowFunction(func, FLOW)
+                re_value = temp(*args, __debug_default=debug_default, __debug_debug=debug_debug, **kwargs)
+                return re_value
+
+            setattr(wrapper, '__debug', True)
+            return wrapper
+
+    return dec
 
 
 def debug_class_include(name_list):
@@ -388,8 +402,12 @@ class DebugError(Exception):
 
 
 def teardown(func):
+    """
+    这个函数可以规范teardown函数，保证无论怎么写，都不会因为参数的传递而报错
+    """
+
     @wraps_ori(func)
-    def wrapper(args, kwargs, re_value, error, traceback_str):
+    def wrapper(args=None, kwargs=None, re_value=None, error=None, traceback_str=None):
         pass
 
     return wrapper
