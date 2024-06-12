@@ -41,15 +41,14 @@ class Flow:
                 else:
                     self.debug_flag = 1
 
-    @property
-    def text(self):
-        return self.main.total_text()
-
     def set_current_function(self, func):
         self.current_function.add_son(func)
         self.current_function = func
 
     def current_function_end(self):
+        """
+        包内的函数，如果某个函数执行完毕后，需要调用这个函数，来告知flow退出当前函数
+        """
         if self.current_function is None:
             raise Exception('已经退出了所有的结算函数，并且额外执行了一次current_function_end')
         else:
@@ -327,7 +326,15 @@ class TestError(Exception):
 FLOW = Flow()
 
 
-def debug_function(debug_default=None, debug_debug=None):
+def debug_function(debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None):
+    """
+    作为装饰器使用，使该函数会被debug覆盖
+    :param debug_default: 默认情况下的处理方法，0→1
+    :param debug_debug: debug状态下的处理方法，0
+    :param include_error: 仅抓取这些bug
+    :param exclude_error: 不抓取这些bug
+    :param teardown_function: 统一的teardown函数，需要传入参数、返回值、错误信息
+    """
     if callable(debug_default):
         return debug_function()(debug_default)
 
@@ -337,7 +344,7 @@ def debug_function(debug_default=None, debug_debug=None):
         else:
             @wraps(func)
             def wrapper(*args, __debug_default=debug_default, __debug_debug=debug_debug, **kwargs):
-                temp = FlowFunction(func, FLOW)
+                temp = FlowFunction(func, FLOW, include=include_error, exclude=exclude_error, teardown_function=teardown_function)
                 re_value = temp(*args, __debug_default=debug_default, __debug_debug=debug_debug, **kwargs)
                 return re_value
 
@@ -347,9 +354,15 @@ def debug_function(debug_default=None, debug_debug=None):
     return dec
 
 
-def debug_class_include(name_list):
+def debug_class_include(*name_list, debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None):
     """
-    作为装饰器使用，传入一个列表，列表内所有函数的名称均会被增加debug
+    作为装饰器使用，传入的若干名称，都会搜索相应的函数，让后对这些名字的函数进行debug
+    :param name_list:
+    :param debug_default: 默认情况下的处理方法，0→1
+    :param debug_debug: debug状态下的处理方法，0
+    :param include_error: 仅抓取这些bug
+    :param exclude_error: 不抓取这些bug
+    :param teardown_function: 统一的teardown函数，需要传入参数、返回值、错误信息
     """
 
     def dec(cls):
@@ -357,26 +370,30 @@ def debug_class_include(name_list):
             if hasattr(cls, name):
                 func = getattr(cls, name)
                 if callable(func):
-                    setattr(cls, name, debug_function(func))
+                    setattr(cls, name, debug_function(debug_default=debug_default, debug_debug=debug_debug, include_error=include_error, exclude_error=exclude_error, teardown_function=teardown_function)(func))
         return cls
 
     return dec
 
 
-def debug_class_exclude(name_list=None):
+def debug_class_exclude(*name_list, debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None):
     """
-    作为装饰器使用，传入一个列表，除了__开头和列表里的名称，所有的函数均会被增加debug
+    作为装饰器使用，除了__开头和列表里的名称，所有的函数均会被增加debug
     不输入的情况下，会包含所有的函数
+    :param name_list:
+    :param debug_default: 默认情况下的处理方法，0→1
+    :param debug_debug: debug状态下的处理方法，0
+    :param include_error: 仅抓取这些bug
+    :param exclude_error: 不抓取这些bug
+    :param teardown_function: 统一的teardown函数，需要传入参数、返回值、错误信息
     """
-
-    name_list = [] if name_list is None else list(name_list)
 
     def dec(cls):
         for name in dir(cls):
             if not name.startswith('__') and name not in name_list:
                 func = getattr(cls, name)
                 if callable(func):
-                    setattr(cls, name, debug_function(func))
+                    setattr(cls, name, debug_function(debug_default=debug_default, debug_debug=debug_debug, include_error=include_error, exclude_error=exclude_error, teardown_function=teardown_function)(func))
         return cls
 
     return dec

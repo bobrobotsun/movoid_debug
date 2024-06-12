@@ -5,7 +5,7 @@ with open("README.md", "r", encoding='utf-8') as fh:
 
 setup(
     name='movoid_debug',
-    version='1.3.0',
+    version='1.3.0.001',
     packages=find_packages(),
     url='',
     license='',
