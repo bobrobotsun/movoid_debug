@@ -5,7 +5,7 @@ with open("README.md", "r", encoding='utf-8') as fh:
 
 setup(
     name='movoid_debug',
-    version='1.3.0.001',
+    version='1.4.0',
     packages=find_packages(),
     url='',
     license='',
@@ -17,4 +17,7 @@ setup(
     install_requires=[
         'movoid_function'
     ],
+    extras_requires=[
+        'pyside6'
+    ]
 )

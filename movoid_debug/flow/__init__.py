@@ -6,4 +6,5 @@
 # Time          : 2024/6/2 21:50
 # Description   : 
 """
-from .flow import FLOW, Flow, FlowFunction, debug_function, debug_class_include, debug_class_exclude
+from .flow import (FLOW, Flow, FlowFunction,
+                   debug, debug_include, debug_exclude)

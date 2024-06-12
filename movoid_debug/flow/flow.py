@@ -128,15 +128,21 @@ class BasicFunction:
         self.re_value = None
 
     def result(self, simple=False, tostring=False):
+        """
+        获取当前函数的运行状态，分为已有返回值、处于error状态、正在运行中（正在处理的函数是本函数的子步骤）
+        :param simple: error信息是否需要简化
+        :param tostring: 如果是return的话，返回字符串还是实际值
+        :return: 函数的运行状态
+        """
         if self.has_return:
-            re_value = str(self.re_value) if tostring else self.re_value
+            re_value = f'return({type(self.re_value).__name__}): {self.re_value}' if tostring else self.re_value
         elif self.traceback:
             if simple:
                 re_value = f'{type(self.error).__name__}:{self.error}' if tostring else self.error
             else:
                 re_value = self.traceback
         else:
-            re_value = 'not done yet'
+            re_value = 'running'
         return re_value
 
     def add_son(self, son, son_type='function'):
@@ -147,45 +153,12 @@ class BasicFunction:
         """
         self.son.append([son, son_type])
 
-    def self_text(self, indent=0):
-        return '\t' * indent + '--'
-
-    def total_text(self, indent=0):
-        re_str = self.self_text(indent)
-        for son, son_type in self.son:
-            if son_type == 'function':
-                re_str += '\n' + son.total_text(indent=indent + 1)
-            elif son_type == 'test':
-                re_str += '\n' + self.son_test_text(son, indent + 1)
-            else:
-                re_str += '\n' + '\t' * (indent + 1) + str(son)
-        return re_str
-
-    def join_func_args_kwargs(self, func, args, kwargs):
-        func_str = f'{func.__module__}:{func.__name__}'
-        args_str = f'{args}'
-        kwargs_str = f'{kwargs}'
-        arg_total_str = f'{args_str}{kwargs_str}'
-        return f'{func_str}({arg_total_str})'
-
-    def son_test_text(self, son, indent=0):
-        bool_str = f'测试{"成功" if son[0] else "失败"}'
-        func_str = self.join_func_args_kwargs(*son[1:4])
-        if son[0]:
-            tail_str = f'->{son[4]}'
-        else:
-            tail_str = '\n' + '\t' * (indent + 1) + son[5]
-        return '\t' * indent + f'{bool_str}{func_str}{tail_str}'
-
 
 class MainFunction(BasicFunction):
     def __init__(self, flow):
         super().__init__()
         self.flow = flow
         self.parent = flow
-
-    def self_text(self, indent=0):
-        return '\t' * indent + 'main'
 
 
 class FlowFunction(BasicFunction):
@@ -254,18 +227,6 @@ class FlowFunction(BasicFunction):
                 self.end = True
                 self.flow.current_function_end()
 
-    def self_text(self, indent=0):
-        indent_str = '\t' * indent
-        func_str = self.join_func_args_kwargs(self.func, self.args, self.kwargs)
-        if self.end:
-            if self.has_return:
-                return_str = f' -> {self.re_value}'
-            else:
-                return_str = self.traceback
-        else:
-            return_str = '...'
-        return f'{indent_str}{func_str}{return_str}'
-
 
 class TestFunction(BasicFunction):
     func_type = 'test'
@@ -303,21 +264,6 @@ class TestFunction(BasicFunction):
                 self.end = True
                 self.flow.current_function_end()
 
-    def self_text(self, indent=0):
-        indent_str = '\t' * indent
-        func_str = self.join_func_args_kwargs(self.func, self.args, self.kwargs)
-        if self.end:
-            if self.has_return:
-                pass_str = '通过：'
-                return_str = f' -> {self.re_value}'
-            else:
-                pass_str = '失败：'
-                return_str = self.traceback
-        else:
-            pass_str = '进行中：'
-            return_str = '...'
-        return f'{indent_str}{pass_str}{func_str}{return_str}'
-
 
 class TestError(Exception):
     pass
@@ -326,7 +272,7 @@ class TestError(Exception):
 FLOW = Flow()
 
 
-def debug_function(debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None):
+def debug(debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None):
     """
     作为装饰器使用，使该函数会被debug覆盖
     :param debug_default: 默认情况下的处理方法，0→1
@@ -336,7 +282,7 @@ def debug_function(debug_default=None, debug_debug=None, include_error=None, exc
     :param teardown_function: 统一的teardown函数，需要传入参数、返回值、错误信息
     """
     if callable(debug_default):
-        return debug_function()(debug_default)
+        return debug()(debug_default)
 
     def dec(func):
         if getattr(func, '__debug', False):
@@ -354,7 +300,7 @@ def debug_function(debug_default=None, debug_debug=None, include_error=None, exc
     return dec
 
 
-def debug_class_include(*name_list, debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None):
+def debug_include(*name_list, debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None):
     """
     作为装饰器使用，传入的若干名称，都会搜索相应的函数，让后对这些名字的函数进行debug
     :param name_list:
@@ -370,13 +316,13 @@ def debug_class_include(*name_list, debug_default=None, debug_debug=None, includ
             if hasattr(cls, name):
                 func = getattr(cls, name)
                 if callable(func):
-                    setattr(cls, name, debug_function(debug_default=debug_default, debug_debug=debug_debug, include_error=include_error, exclude_error=exclude_error, teardown_function=teardown_function)(func))
+                    setattr(cls, name, debug(debug_default=debug_default, debug_debug=debug_debug, include_error=include_error, exclude_error=exclude_error, teardown_function=teardown_function)(func))
         return cls
 
     return dec
 
 
-def debug_class_exclude(*name_list, debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None):
+def debug_exclude(*name_list, debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None):
     """
     作为装饰器使用，除了__开头和列表里的名称，所有的函数均会被增加debug
     不输入的情况下，会包含所有的函数
@@ -393,7 +339,7 @@ def debug_class_exclude(*name_list, debug_default=None, debug_debug=None, includ
             if not name.startswith('__') and name not in name_list:
                 func = getattr(cls, name)
                 if callable(func):
-                    setattr(cls, name, debug_function(debug_default=debug_default, debug_debug=debug_debug, include_error=include_error, exclude_error=exclude_error, teardown_function=teardown_function)(func))
+                    setattr(cls, name, debug(debug_default=debug_default, debug_debug=debug_debug, include_error=include_error, exclude_error=exclude_error, teardown_function=teardown_function)(func))
         return cls
 
     return dec
@@ -424,7 +370,7 @@ def teardown(func):
     """
 
     @wraps_ori(func)
-    def wrapper(args=None, kwargs=None, re_value=None, error=None, traceback_str=None):
+    def wrapper(args=None, kwargs=None, re_value=None, error=None, traceback_str=None):  # noqa
         pass
 
     return wrapper
