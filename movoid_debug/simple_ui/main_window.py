@@ -7,9 +7,12 @@
 # Description   : 
 """
 import re
+import traceback
 
+from PySide6.QtCore import Signal, Slot
 from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QGridLayout, QTreeWidget, QTextEdit, QHBoxLayout, QVBoxLayout, QPushButton, QTreeWidgetItem
 
+from .flow_thread import FlowThread
 from .value_set_window import ValueSetWindow, KeySetWindow, tree_item_can_expand, expand_tree_item_to_show_dir
 
 
@@ -42,9 +45,11 @@ def create_new_dict_item(ori_dict, ori_key=None):
 
 
 class MainWindow(QMainWindow):
+
     def __init__(self, flow):
         super().__init__()
         self.flow = flow
+        self.testing = False
         self.init_ui()
         self.show()
         self.refresh_ui()
@@ -166,7 +171,7 @@ class MainWindow(QMainWindow):
         self.refresh_flow_tree_item(flow_tree, self.flow.main)
         current_function = self.flow.current_function
         print_text.setText(str(current_function.result(tostring=True)))
-        flow_tree.expandAll()
+        flow_tree.expandToDepth(1)
 
     def refresh_flow_tree_item(self, top_item, flow):
         arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')  # noqa
@@ -183,17 +188,16 @@ class MainWindow(QMainWindow):
                 self.refresh_flow_tree_item(child, i[0])
                 if i[0] == select_flow:
                     self.findChild(QTreeWidget, 'flow_tree').setCurrentItem(child)  # noqa
+                    self.refresh_arg_tree(i[0])
             else:
                 child = QTreeWidgetItem(top_item)
                 child.setText(0, 'log')
                 child.setText(1, str(i[0]))
 
-    def click_flow_refresh_ui(self, q):
-        flow_tree: QTreeWidget = self.findChild(QTreeWidget, 'flow_tree')  # noqa
+    def click_flow_refresh_ui(self, current_item):
         current_text: QTextEdit = self.findChild(QTextEdit, 'current_text')  # noqa
         arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')  # noqa
         arg_tree.clear()
-        current_item = flow_tree.currentItem()
         current_func = getattr(current_item, '__func')
         current_text.setText(str(current_func.result(tostring=True)))
         self.refresh_arg_tree(current_func)
@@ -204,7 +208,7 @@ class MainWindow(QMainWindow):
         run_test_button: QPushButton = self.findChild(QPushButton, 'run_test_button')  # noqa
         add_args_button: QPushButton = self.findChild(QPushButton, 'add_args_button')  # noqa
         add_kwargs_button: QPushButton = self.findChild(QPushButton, 'add_kwargs_button')  # noqa
-        run_test_button.setEnabled(True)
+        run_test_button.setEnabled(not self.testing)
 
         setattr(arg_tree, '__func', func)
         setattr(arg_tree, '__kwarg_value', kwarg_value)
@@ -282,7 +286,7 @@ class MainWindow(QMainWindow):
 
     def run_test(self):
         arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')  # noqa
-        if hasattr(arg_tree, '__func'):
+        if hasattr(arg_tree, '__func') and not self.testing:
             func = getattr(arg_tree, '__func')
             kwarg_value = getattr(arg_tree, '__kwarg_value')
             args = [_v for _k, _v in kwarg_value['arg'].items()]
@@ -292,8 +296,10 @@ class MainWindow(QMainWindow):
             if 'kwargs' in kwarg_value:
                 for k, v in list(kwarg_value['kwargs'].values())[0].items():
                     kwargs[k] = v
-            func(*args, **kwargs)
-            self.refresh_ui()
+            self.thread = FlowThread(func, args=args, kwargs=kwargs)
+            self.thread.signal_test.connect(self.slot_test)
+            self.thread.start()
+
 
     def run_continue(self):
         self.close()
@@ -409,3 +415,8 @@ class MainWindow(QMainWindow):
                 key = current_value[2]
                 kwargs_dict.pop(key)
                 self.refresh_arg_tree(func, kwarg_value)
+
+    @Slot(bool)
+    def slot_test(self, start: bool):
+        self.testing = start
+        self.refresh_ui()
