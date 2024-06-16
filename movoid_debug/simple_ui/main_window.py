@@ -7,11 +7,8 @@
 # Description   : 
 """
 import re
-import traceback
 
-from PySide6.QtCore import Signal, Slot
-from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QGridLayout, QTreeWidget, QTextEdit, QHBoxLayout, QVBoxLayout, QPushButton, QTreeWidgetItem
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import QMainWindow, QApplication, QTreeWidget, QTextEdit, QVBoxLayout, QPushButton, QTreeWidgetItem, QHeaderView, QSplitter, QWidget
 
 from .flow_thread import FlowThread
@@ -61,21 +58,20 @@ class MainWindow(QMainWindow):
         self.setGeometry(int(screen_rect.width() * 0.1), int(screen_rect.height() * 0.2), int(screen_rect.width() * 0.8), int(screen_rect.height() * 0.6))
         main_splitter = QSplitter(self)
         self.setCentralWidget(main_splitter)
-        main_splitter.setStretchFactor(0, 8)
-        main_splitter.setStretchFactor(1, 4)
-        main_splitter.setStretchFactor(2, 6)
-        main_splitter.setStretchFactor(3, 1)
 
         flow_tree = QTreeWidget(main_splitter)
         flow_tree.setObjectName('flow_tree')
         main_splitter.addWidget(flow_tree)
+        main_splitter.setStretchFactor(0, 12)
         flow_tree.setHeaderLabels(['type', 'func', 'status'])
         flow_tree_header = flow_tree.header()
         flow_tree_header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        flow_tree_header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         flow_tree.itemClicked.connect(self.click_flow_tree_item)
 
         error_text_splitter = QSplitter(Qt.Vertical, main_splitter)
         main_splitter.addWidget(error_text_splitter)
+        main_splitter.setStretchFactor(1, 4)
 
         print_text = QTextEdit(main_splitter)
         print_text.setObjectName('print_text')
@@ -86,6 +82,7 @@ class MainWindow(QMainWindow):
 
         variable_tree_splitter = QSplitter(Qt.Vertical, main_splitter)
         main_splitter.addWidget(variable_tree_splitter)
+        main_splitter.setStretchFactor(2, 6)
 
         arg_tree = QTreeWidget(main_splitter)
         arg_tree.setObjectName('arg_tree')
@@ -100,10 +97,20 @@ class MainWindow(QMainWindow):
         global_tree.setHeaderLabels(['key', 'type', 'value'])
         global_tree.itemExpanded.connect(self.expand_tree_item_to_show_dir)
 
+        step_tree_splitter = QSplitter(Qt.Vertical, main_splitter)
+        main_splitter.addWidget(step_tree_splitter)
+        main_splitter.setStretchFactor(3, 6)
+
+        step_tree = QTreeWidget(main_splitter)
+        step_tree.setObjectName('arg_tree')
+        variable_tree_splitter.addWidget(step_tree)
+        step_tree.setHeaderLabels(['complete', 'code', 'error'])
+
         run_widget = QWidget(main_splitter)
         run_grid = QVBoxLayout(run_widget)
         run_widget.setLayout(run_grid)
         main_splitter.addWidget(run_widget)
+        main_splitter.setStretchFactor(4, 1)
 
         run_test_button = QPushButton('测试', run_widget)
         run_test_button.setObjectName('run_test_button')
@@ -287,6 +294,9 @@ class MainWindow(QMainWindow):
                 setattr(temp, '__tree_object', v)
                 tree_item_can_expand(temp)
 
+    def refresh_step_tree(self):
+        pass
+
     def run_test(self):
         arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')  # noqa
         if hasattr(arg_tree, '__func') and not self.testing:
@@ -302,7 +312,6 @@ class MainWindow(QMainWindow):
             self.thread = FlowThread(func, args=args, kwargs=kwargs)
             self.thread.signal_test.connect(self.slot_test)
             self.thread.start()
-
 
     def run_continue(self):
         self.close()

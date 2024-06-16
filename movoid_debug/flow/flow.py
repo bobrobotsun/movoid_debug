@@ -6,6 +6,8 @@
 # Time          : 2024/4/14 16:15
 # Description   : 
 """
+import inspect
+import pathlib
 import sys
 import traceback
 
@@ -65,6 +67,7 @@ class Flow:
         self.test = True
         flag = self.analyse_target_debug_flag(*debug_flag)
         if flag == 0:
+            self.get_error_step()
             re_value = self.when_error_debug()
         else:
             re_value = flag
@@ -111,6 +114,18 @@ class Flow:
             temp = self.continue_error_list
             self.continue_error_list = []
             raise DebugError(*temp)
+
+    def get_error_step(self):
+        temp_frame = inspect.currentframe()
+        while temp_frame is not None:
+            print(temp_frame)
+            file_path_text = temp_frame.f_code.co_filename
+            file_path = pathlib.Path(file_path_text)
+            with file_path.open(mode='r', encoding='utf8') as f:
+                file_lines = f.readlines()
+            lineno = temp_frame.f_lineno
+            print(file_lines[lineno - 2:lineno + 3])
+            temp_frame = temp_frame.f_back
 
 
 class BasicFunction:
