@@ -102,9 +102,13 @@ class MainWindow(QMainWindow):
         main_splitter.setStretchFactor(3, 6)
 
         step_tree = QTreeWidget(main_splitter)
-        step_tree.setObjectName('arg_tree')
-        variable_tree_splitter.addWidget(step_tree)
+        step_tree.setObjectName('step_tree')
+        step_tree_splitter.addWidget(step_tree)
         step_tree.setHeaderLabels(['complete', 'code', 'error'])
+
+        function_code = QTextEdit(main_splitter)
+        function_code.setObjectName('function_code')
+        step_tree_splitter.addWidget(function_code)
 
         run_widget = QWidget(main_splitter)
         run_grid = QVBoxLayout(run_widget)
@@ -173,6 +177,7 @@ class MainWindow(QMainWindow):
         self.refresh_flow_tree()
         self.refresh_global_tree()
         self.refresh_current_text()
+        self.refresh_function_code()
 
     def refresh_flow_tree(self):
         flow_tree: QTreeWidget = self.findChild(QTreeWidget, 'flow_tree')  # noqa
@@ -294,8 +299,9 @@ class MainWindow(QMainWindow):
                 setattr(temp, '__tree_object', v)
                 tree_item_can_expand(temp)
 
-    def refresh_step_tree(self):
-        pass
+    def refresh_function_code(self):
+        function_code: QTextEdit = self.findChild(QTextEdit, 'function_code')  # noqa
+        function_code.setText(''.join(self.flow.final_lines))
 
     def run_test(self):
         arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')  # noqa

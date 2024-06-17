@@ -7,7 +7,6 @@
 # Description   : 
 """
 import inspect
-import pathlib
 import sys
 import traceback
 
@@ -116,16 +115,36 @@ class Flow:
             raise DebugError(*temp)
 
     def get_error_step(self):
-        temp_frame = inspect.currentframe()
-        while temp_frame is not None:
-            print(temp_frame)
-            file_path_text = temp_frame.f_code.co_filename
-            file_path = pathlib.Path(file_path_text)
-            with file_path.open(mode='r', encoding='utf8') as f:
-                file_lines = f.readlines()
-            lineno = temp_frame.f_lineno
-            print(file_lines[lineno - 2:lineno + 3])
-            temp_frame = temp_frame.f_back
+        temp_traceback = sys.exc_info()[2]
+        while temp_traceback.tb_next is not None:
+            temp_traceback = temp_traceback.tb_next
+        temp_traceback.with_traceback()
+        temp_frame = temp_traceback.tb_frame
+        temp_code = temp_frame.f_code
+        self.final_frame = temp_frame
+        self.final_code = temp_code
+        self.final_lines, self.final_first_lineno = inspect.getsourcelines(temp_code)
+
+        # traceback.print_exc()
+        # temp_frame = inspect.currentframe()
+        # last_file = pathlib.Path(temp_frame.f_code.co_filename)
+        # temp_frame = temp_frame.f_back
+        # while temp_frame is not None:
+        #     temp_code = temp_frame.f_code
+        #     print(temp_frame.f_trace_lines, temp_frame.f_trace_opcodes, temp_frame.f_trace, temp_frame, temp_code)
+        #     # print('line table', temp_code.co_linetable)
+        #     file_path_text = temp_frame.f_code.co_filename
+        #     file_path = pathlib.Path(file_path_text)
+        #     with file_path.open(mode='r', encoding='utf8') as f:
+        #         file_lines = f.readlines()
+        #     lineno = temp_code.co_firstlineno
+        #     print(file_lines[lineno - 2:lineno + 3])
+        #     with last_file.open(mode='r', encoding='utf8') as f:
+        #         last_file_lines = f.readlines()
+        #     lineno = temp_frame.f_lineno
+        #     print(last_file_lines[lineno - 2:lineno + 3])
+        #     last_file = pathlib.Path(temp_frame.f_code.co_filename)
+        #     temp_frame = temp_frame.f_back
 
 
 class BasicFunction:
