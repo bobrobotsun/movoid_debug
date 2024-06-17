@@ -46,3 +46,4 @@ except:
     print(frame.f_locals)
     test1()
     print(frame.f_locals)
+    print(globals())
