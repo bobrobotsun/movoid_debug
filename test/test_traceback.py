@@ -6,7 +6,24 @@ Creator:        sunyifan0649
 Create Date:    2024/6/17
 Description:    
 """
-import sys
+
+
+class Test:
+    diss = True
+
+    def test_f1(self, b):
+        print(1 + b)
+
+    def f2(self, a=666):
+        print(self, a)
+
+    @property
+    def like(self):
+        return True
+
+    @like.setter
+    def like(self, value):
+        print('nonono')
 
 
 def test1():
@@ -23,27 +40,22 @@ def test2():
     print('test2 start')
 
 
-try:
-    test2()
-except:
-    tb = sys.exc_info()[2]
-    while tb.tb_next is not None:
-        tb = tb.tb_next
-    frame = tb.tb_frame
-    code = frame.f_code
-    name = code.co_name
-    global_dict = frame.f_globals
-    func = global_dict.get(name)
+def getter_like(self):
+    return False
 
 
-    def test_func():
-        a = 0
-        print('test func start')
+def setter_like(self, value):
+    print(value)
 
 
-    global_dict[name] = test_func
-    print(frame.f_globals)
-    print(frame.f_locals)
-    test1()
-    print(frame.f_locals)
-    print(globals())
+test_1 = Test()
+test_2 = Test()
+Test.setter_like = setter_like
+Test.like = Test.like.setter(setter_like)
+
+print(Test.like.getter, Test.like.setter, Test.like.deleter)
+
+# setattr(Test, 'like', test_class)
+# Test.f2(333)
+index = [0, 1]
+test_1.like = True
