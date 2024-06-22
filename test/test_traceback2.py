@@ -10,9 +10,16 @@ from movoid_debug.flow.traceback import Traceback
 from test_traceback import test_1, test_2, index
 
 index += [1, 2]
+tb = Traceback()
 try:
     test_1.test_f1(1)
     test_2.test_f1('1')
 except:
-    tb = Traceback()
+    tb.init()
+    tb.test()
+    tb.test2()
+try:
+    test_1.wrapper('123')
+except:
+    tb.init()
     tb.test()

@@ -25,6 +25,10 @@ class Test:
     def like(self, value):
         print('nonono')
 
+    @classmethod
+    def test_class(cls, doit):
+        print(cls, doit)
+
 
 def test1():
     a = 1
@@ -48,6 +52,13 @@ def setter_like(self, value):
     print(value)
 
 
+@staticmethod
+def replace_f2(value=1):
+    print('replace', value)
+
+
+Test.f2 = replace_f2
+
 test_1 = Test()
 test_2 = Test()
 Test.setter_like = setter_like
@@ -59,3 +70,5 @@ print(Test.like.getter, Test.like.setter, Test.like.deleter)
 # Test.f2(333)
 index = [0, 1]
 test_1.like = True
+test_1.f2('happy')
+Test.f2('sad')
