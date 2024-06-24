@@ -18,8 +18,8 @@ except:
     tb.init()
     tb.test()
     tb.test2()
-try:
-    test_1.wrapper('123')
-except:
-    tb.init()
-    tb.test()
+# try:
+#     test_1.wrapper('123')
+# except:
+#     tb.init()
+#     tb.test()

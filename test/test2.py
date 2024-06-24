@@ -62,7 +62,7 @@ class Test:
 
 
 # test5()
-test6()
-# test = Test()
+# test6()
+test = Test()
 # test.test1()
 # test1()

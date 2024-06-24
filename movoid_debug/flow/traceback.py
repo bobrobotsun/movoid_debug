@@ -114,12 +114,15 @@ class Traceback:
 {func_text}
 Test.wrapper=wrapper
         """
-        self.index = 1
+        # self.index = 1
         exec(exec_text, self.frame.f_globals, self.frame.f_locals)
-        print('Test.wrapper', Test.wrapper.__code__)
-        print('Test.wrapper', id(Test.wrapper.__code__))
-        self.temp_code[id(Test.wrapper.__code__)] = func_text.strip('\n').split('\n')
-        print(self.temp_code)
+        print(self.frame.f_globals.get('wrapper'))
+        print(self.frame.f_locals.get('wrapper'))
+
+        # print('Test.wrapper', Test.wrapper.__code__)
+        # print('Test.wrapper', id(Test.wrapper.__code__))
+        # self.temp_code[id(Test.wrapper.__code__)] = func_text.strip('\n').split('\n')
+        # print(self.temp_code)
         # Test.wrapper(888)
         # print(self.self_frame.f_globals.get('wrapper'))
         # for i in self:
