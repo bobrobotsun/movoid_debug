@@ -17,6 +17,7 @@ class Test:
 
     @property
     def prop(self):
+        raise Exception
         return self._prop
 
     @prop.setter
@@ -51,13 +52,14 @@ def func_error(a):
 tb = Traceback()
 try:
     test = Test()
-    test.do1()
+    test.prop
 except:
     tb.init()
     # print(tb.frame.f_globals.get('Test'))
     code = Code(tb.code, tb.frame)
-    code.replace_by_new_text("""def temp_func(self, a):
-    print(a)
-    print('down')
+    code.replace_by_new_text("""def temp_func(self):
+    self._prop+=1
+    return self._prop
 """)
-    test.do1(123)
+    print(test.prop)
+    print(test.prop)

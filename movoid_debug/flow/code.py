@@ -172,13 +172,21 @@ class Code:
                     func = self._frame.f_locals.get(func_name)
                     func_code = func.__code__
                     target_list = self._style_info['target']
-                    if len(target_list) == 2:
+                    if self._style == self.FUNCTION:
                         getattr(self._frame, target_list[0])[target_list[1]] = func
                     else:
                         temp = getattr(self._frame, target_list[0])[target_list[1]]
-                        for attr in target_list[2:-1]:
-                            temp = getattr(temp, attr)
-                        setattr(temp, target_list[-1], func)
+                        if self._style == self.CLASS_FUNCTION:
+                            setattr(temp, target_list[2], func)
+                        else:
+                            temp_property: property = getattr(temp, target_list[2])
+                            if self._style == self.GETTER:
+                                temp_property = temp_property.getter(func)
+                            elif self._style == self.SETTER:
+                                temp_property = temp_property.setter(func)
+                            elif self._style == self.DELETER:
+                                temp_property = temp_property.deleter(func)
+                            setattr(temp, target_list[2], temp_property)
                 else:
                     raise Exception('错误的代码')
             except Exception as err:
