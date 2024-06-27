@@ -125,7 +125,7 @@ class Code:
                     self._style_info['target'] = [('attr', 'f_globals'), ('key', self._code.co_name)]
                 else:
                     for k, v in self._frame.f_globals.items():
-                        if getattr(v, '__code__') == self._code:
+                        if hasattr(v, '__code__') and getattr(v, '__code__') == self._code:
                             self._style_info['target'] = [('attr', 'f_globals'), ('key', k)]
             elif self._style in [self.CLASS_FUNCTION, self.GETTER, self.SETTER, self.DELETER]:
                 class_name = self._style_info.get('class_name')
