@@ -122,11 +122,11 @@ class Code:
         if self._frame is not None:
             if self._style == self.FUNCTION:
                 if self._code.co_name in self._frame.f_globals and self._frame.f_globals[self._code.co_name].__code__ == self._code:
-                    self._style_info['target'] = ['f_globals', self._code.co_name]
+                    self._style_info['target'] = [('attr', 'f_globals'), ('key', self._code.co_name)]
                 else:
                     for k, v in self._frame.f_globals.items():
                         if getattr(v, '__code__') == self._code:
-                            self._style_info['target'] = ['f_globals', k]
+                            self._style_info['target'] = [('attr', 'f_globals'), ('key', k)]
             elif self._style in [self.CLASS_FUNCTION, self.GETTER, self.SETTER, self.DELETER]:
                 class_name = self._style_info.get('class_name')
                 tar_class_list = []
@@ -143,22 +143,18 @@ class Code:
                         v = getattr(tar_class, i)
                         tar_func_list.append([i, v])
                     for func_name, tar_func in tar_func_list:
-                        if self._style == self.CLASS_FUNCTION and hasattr(tar_func, '__code__'):
-                            if tar_func.__code__ == self._code:
-                                self._style_info['target'] = ['f_globals', class_name, func_name]
-                                break
-                        elif self._style == self.GETTER and hasattr(tar_func, 'fget') and hasattr(tar_func.fget, '__code__'):
-                            if tar_func.fget.__code__ == self._code:
-                                self._style_info['target'] = ['f_globals', class_name, func_name, 'fget']
-                                break
-                        elif self._style == self.SETTER and hasattr(tar_func, 'fset') and hasattr(tar_func.fset, '__code__'):
-                            if tar_func.fset.__code__ == self._code:
-                                self._style_info['target'] = ['f_globals', class_name, func_name, 'fset']
-                                break
-                        elif self._style == self.DELETER and hasattr(tar_func, 'fdel') and hasattr(tar_func.fdel, '__code__'):
-                            if tar_func.fdel.__code__ == self._code:
-                                self._style_info['target'] = ['f_globals', class_name, func_name, 'fdel']
-                                break
+                        if self._style == self.CLASS_FUNCTION and hasattr(tar_func, '__code__') and tar_func.__code__ == self._code:
+                            self._style_info['target'] = [('attr', 'f_globals'), ('key', class_name), ('attr', func_name)]
+                            break
+                        elif self._style == self.GETTER and hasattr(tar_func, 'fget') and hasattr(tar_func.fget, '__code__') and tar_func.fget.__code__ == self._code:
+                            self._style_info['target'] = [('attr', 'f_globals'), ('key', class_name), ('attr', func_name)]
+                            break
+                        elif self._style == self.SETTER and hasattr(tar_func, 'fset') and hasattr(tar_func.fset, '__code__') and tar_func.fset.__code__ == self._code:
+                            self._style_info['target'] = [('attr', 'f_globals'), ('key', class_name), ('attr', func_name)]
+                            break
+                        elif self._style == self.DELETER and hasattr(tar_func, 'fdel') and hasattr(tar_func.fdel, '__code__') and tar_func.fdel.__code__ == self._code:
+                            self._style_info['target'] = [('attr', 'f_globals'), ('key', class_name), ('attr', func_name)]
+                            break
                     if self._style_info.get('target'):
                         break
 
@@ -172,21 +168,19 @@ class Code:
                     func = self._frame.f_locals.get(func_name)
                     func_code = func.__code__
                     target_list = self._style_info['target']
-                    if self._style == self.FUNCTION:
-                        getattr(self._frame, target_list[0])[target_list[1]] = func
+                    if self._style in (self.FUNCTION, self.CLASS_FUNCTION):
+                        new_value = func
                     else:
-                        temp = getattr(self._frame, target_list[0])[target_list[1]]
-                        if self._style == self.CLASS_FUNCTION:
-                            setattr(temp, target_list[2], func)
+                        new_value = self._get_value_from_frame(target_list)
+                        if self._style == self.GETTER:
+                            new_value = new_value.getter(func)
+                        elif self._style == self.SETTER:
+                            new_value = new_value.setter(func)
+                        elif self._style == self.DELETER:
+                            new_value = new_value.deleter(func)
                         else:
-                            temp_property: property = getattr(temp, target_list[2])
-                            if self._style == self.GETTER:
-                                temp_property = temp_property.getter(func)
-                            elif self._style == self.SETTER:
-                                temp_property = temp_property.setter(func)
-                            elif self._style == self.DELETER:
-                                temp_property = temp_property.deleter(func)
-                            setattr(temp, target_list[2], temp_property)
+                            raise Exception(f'不存在这样的类型：{self._style}')
+                    self._set_value_from_frame(target_list, new_value)
                 else:
                     raise Exception('错误的代码')
             except Exception as err:
@@ -195,6 +189,23 @@ class Code:
                 self._change_list.append([id(func_code), func_code, new_function, -1])
         else:
             raise Exception('没有找到有效替代项，请重新设置替代目标')
+
+    def _get_value_from_frame(self, key_list):
+        temp = self._frame
+        for son_type, son_key in key_list:
+            if son_type == 'attr':
+                temp = getattr(temp, son_key)
+            elif son_type == 'key':
+                temp = temp[son_key]
+        return temp
+
+    def _set_value_from_frame(self, key_list, value):
+        temp = self._get_value_from_frame(key_list[:-1])
+        son_type, son_key = key_list[-1]
+        if son_type == 'attr':
+            setattr(temp, son_key, value)
+        elif son_type == 'key':
+            temp[son_key] = value
 
     def replace_by_old_func(self, index):
         index = max(0, min(len(self._change_list) - 1, int(index)))
