@@ -19,19 +19,23 @@ def test1():
 
 
 @debug
-def test2():
-    test3(a=11)
+def test2(a=8):
+    temp = test3(a=a)
+    if temp < 10:
+        raise Exception(temp)
+    return temp
 
 
 @debug
 def test3(*, a=12):
-    raise Exception
+    return a
 
 
 @debug
 def test4():
     test3()
-    test2()
+    re2 = test2()
+    raise Exception(re2)
 
 
 @debug
@@ -63,6 +67,7 @@ class Test:
 
 # test5()
 # test6()
-test = Test()
+# test = Test()
 # test.test1()
 # test1()
+test4()

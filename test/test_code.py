@@ -77,19 +77,19 @@ except:
     # print(func_error.__code__)
     # print(tb.frame.f_globals.get('var_a'))
     # print(tb.frame.f_locals.get('var_a'))
-    exec("return 222", tb.frame.f_globals, tb.frame.f_locals)
+    exec("print(222)", tb.frame.f_globals, tb.frame.f_locals)
 
-# try:
-#     func_error(1)
-#     test = Test()
-#     test.prop
-# except:
-#     tb.init()
-#     # print(tb.frame.f_globals.get('Test'))
-#     c = tb.frame
-#     d = tb.code
-#     code.replace_by_new_text("""def func_error2(b=1):
-#     print(b)
-#     """)
-#     print(func_error.__code__)
-# func_error(1)
+try:
+    func_error(1)
+    test = Test()
+    test.prop
+except:
+    tb.init()
+    # print(tb.frame.f_globals.get('Test'))
+    c = tb.frame
+    d = tb.code
+    code.replace_by_new_text("""def func_error2(b=1):
+    print(b)
+    """)
+    print(func_error.__code__)
+func_error(1)

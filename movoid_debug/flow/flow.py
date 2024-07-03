@@ -12,8 +12,6 @@ import traceback
 
 from movoid_function import Function, wraps, analyse_args_value_from_function, wraps_ori
 
-from ..simple_ui import MainApp, MainWindow
-
 
 class Flow:
     def __init__(self):
@@ -61,7 +59,7 @@ class Flow:
         :param debug_flag: 这是个传入的参数，就是把自己的参数传进去
         :param err: 把故障传上来
         :param traceback_str: 把traceback信息传上来
-        :return: 如果return 1 则是需要continue。如果return 2 则是需要 raise Error
+        :return: 如果return 2 则是需要continue。如果return 1 则是需要 raise Error
         """
         self.test = True
         flag = self.analyse_target_debug_flag(*debug_flag)
@@ -75,10 +73,26 @@ class Flow:
         self.test = False
         return re_value
 
+    def when_test_error(self, *debug_flag, err=None, traceback_str=None):
+        """
+        这是供TestFunction反调的函数，保证当前的处理模式是预选模式
+        :param debug_flag: 这是个传入的参数，就是把自己的参数传进去
+        :param err: 把故障传上来
+        :param traceback_str: 把traceback信息传上来
+        :return: 如果return 2 则是需要continue。如果return 1 则是需要 raise Error
+        """
+        flag = self.analyse_target_debug_flag(*debug_flag)
+        flag = max(1, flag)
+        re_value = flag
+        if flag == 2:
+            self.continue_error_list.append([err, traceback_str])
+        return re_value
+
     def when_error_debug(self):
         """
         调出一个debug窗口来进行debug，编辑请前往main_window.py进行
         """
+        from ..simple_ui import MainApp, MainWindow
         if self.app is None:
             self.app = MainApp()
         self.app.main = MainWindow(self)
@@ -118,7 +132,7 @@ class Flow:
         temp_traceback = sys.exc_info()[2]
         while temp_traceback.tb_next is not None:
             temp_traceback = temp_traceback.tb_next
-        temp_traceback.with_traceback()
+        # temp_traceback.with_traceback()
         temp_frame = temp_traceback.tb_frame
         temp_code = temp_frame.f_code
         self.final_frame = temp_frame
@@ -250,6 +264,8 @@ class FlowFunction(BasicFunction):
                 if error_flag == 1:
                     self.flow.raise_error -= 1
                     raise err
+                elif error_flag == 2:
+                    return self.re_value
             except Exception as err:
                 raise err
             else:
@@ -276,6 +292,8 @@ class TestFunction(BasicFunction):
         if self.end:
             self.ori(*args, **kwargs)
         else:
+            debug_default = kwargs.pop('__debug_default', None)
+            debug_debug = kwargs.pop('__debug_debug', None)
             try:
                 self.args = args
                 self.kwargs = kwargs
@@ -285,6 +303,16 @@ class TestFunction(BasicFunction):
             except TestError as err:
                 if isinstance(self.parent, TestFunction):
                     raise err
+            except self.ori.exclude_error as err:
+                raise err
+            except self.ori.include_error as err:
+                self.error = err
+                self.traceback = traceback.format_exc()
+                error_flag = self.flow.when_test_error(debug_default, debug_debug, err=self.error, traceback_str=self.traceback)
+                if error_flag == 1:
+                    raise err
+                elif error_flag == 2:
+                    return self.re_value
             except Exception as err:
                 self.error = err
                 self.traceback = traceback.format_exc()
@@ -293,6 +321,8 @@ class TestFunction(BasicFunction):
             else:
                 self.has_return = True
                 self.re_value = re_value
+                if self.ori == self.flow.current_function:
+                    self.ori.re_value = self.re_value
                 return self.re_value
             finally:
                 self.end = True

@@ -84,18 +84,27 @@ class MainWindow(QMainWindow):
         main_splitter.addWidget(variable_tree_splitter)
         main_splitter.setStretchFactor(2, 6)
 
-        arg_tree = QTreeWidget(main_splitter)
+        arg_tree = QTreeWidget(variable_tree_splitter)
         arg_tree.setObjectName('arg_tree')
         variable_tree_splitter.addWidget(arg_tree)
         arg_tree.setHeaderLabels(['arg', 'name', 'type', 'value'])
         arg_tree.itemClicked.connect(self.click_arg_tree_item)
         arg_tree.itemDoubleClicked.connect(self.change_arg_tree_value)
+        variable_tree_splitter.setStretchFactor(0, 6)
 
-        global_tree = QTreeWidget(main_splitter)
+        return_tree = QTreeWidget(variable_tree_splitter)
+        return_tree.setObjectName('return_tree')
+        variable_tree_splitter.addWidget(return_tree)
+        return_tree.setHeaderLabels(['func', 'type', 'value'])
+        return_tree.itemDoubleClicked.connect(self.change_return_tree_value)
+        variable_tree_splitter.setStretchFactor(1, 1)
+
+        global_tree = QTreeWidget(variable_tree_splitter)
         global_tree.setObjectName('global_tree')
         variable_tree_splitter.addWidget(global_tree)
         global_tree.setHeaderLabels(['key', 'type', 'value'])
         global_tree.itemExpanded.connect(self.expand_tree_item_to_show_dir)
+        variable_tree_splitter.setStretchFactor(2, 5)
 
         step_tree_splitter = QSplitter(Qt.Vertical, main_splitter)
         main_splitter.addWidget(step_tree_splitter)
@@ -152,9 +161,15 @@ class MainWindow(QMainWindow):
         delete_kwargs_button.clicked.connect(lambda: self.action_delete_kwargs())
         delete_kwargs_button.setEnabled(False)
 
+        copy_return_button = QPushButton('使用这个return值', run_widget)
+        copy_return_button.setObjectName('copy_return_button')
+        run_grid.addWidget(copy_return_button)
+        copy_return_button.clicked.connect(lambda: self.action_copy_return())
+        copy_return_button.setEnabled(False)
+
         run_grid.addStretch(3)
 
-        run_continue_button = QPushButton('忽略错误并continue', run_widget)
+        run_continue_button = QPushButton('忽略错误并return', run_widget)
         run_continue_button.setObjectName('run_continue_button')
         run_grid.addWidget(run_continue_button)
         run_continue_button.clicked.connect(lambda: self.run_continue())
@@ -174,6 +189,7 @@ class MainWindow(QMainWindow):
 
     def refresh_ui(self):
         self.refresh_arg_tree(self.flow.current_function)
+        self.refresh_return_tree(self.flow.current_function)
         self.refresh_flow_tree()
         self.refresh_global_tree()
         self.refresh_current_text()
@@ -207,7 +223,9 @@ class MainWindow(QMainWindow):
                 child.setText(1, str(i[0]))
 
     def click_flow_tree_item(self, current_item):
-        self.refresh_arg_tree(getattr(current_item, '__func', None))
+        current_func = getattr(current_item, '__func', None)
+        self.refresh_arg_tree(current_func)
+        self.refresh_return_tree(current_func)
         self.refresh_current_text()
 
     def refresh_current_text(self):
@@ -274,6 +292,25 @@ class MainWindow(QMainWindow):
                     setattr(temp, '__value', ['kwargs', kwargs_name, k, v])
                     if current_item[0] == 'kwargs' and current_item[1] == k:
                         arg_tree.setCurrentItem(temp)
+
+    def refresh_return_tree(self, func):
+        if func is not None:
+            return_tree: QTreeWidget = self.findChild(QTreeWidget, 'return_tree')  # noqa
+            copy_return_button: QPushButton = self.findChild(QPushButton, 'copy_return_button')  # noqa
+            copy_return_button.setEnabled(func.re_value != self.flow.current_function.re_value)
+
+            setattr(return_tree, '__func', func)
+            return_tree.clear()
+
+            temp = QTreeWidgetItem(return_tree)
+            temp.setText(0, 'select')
+            temp.setText(1, type(func.re_value).__name__)
+            temp.setText(2, str(func.re_value))
+
+            temp = QTreeWidgetItem(return_tree)
+            temp.setText(0, 'current')
+            temp.setText(1, type(self.flow.current_function.re_value).__name__)
+            temp.setText(2, str(self.flow.current_function.re_value))
 
     def click_arg_tree_item(self, current_item):
         arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')  # noqa
@@ -342,6 +379,15 @@ class MainWindow(QMainWindow):
                 temp = temp[i]
             temp[current_value[-2]] = new_value
             self.refresh_arg_tree(func, kwarg_value)
+
+    def change_return_tree_value(self, current_item: QTreeWidgetItem):
+        if current_item.text(0) == 'current':
+            return_tree: QTreeWidget = self.findChild(QTreeWidget, 'return_tree')  # noqa
+            func = getattr(return_tree, '__func')
+            new_value = ValueSetWindow.get_value(self.flow.current_function.re_value)
+            if new_value != self.flow.current_function.re_value:
+                self.flow.current_function.re_value = new_value
+                self.refresh_return_tree(func)
 
     @staticmethod
     def expand_tree_item_to_show_dir(item: QTreeWidgetItem):
@@ -432,6 +478,12 @@ class MainWindow(QMainWindow):
                 key = current_value[2]
                 kwargs_dict.pop(key)
                 self.refresh_arg_tree(func, kwarg_value)
+
+    def action_copy_return(self):
+        return_tree: QTreeWidget = self.findChild(QTreeWidget, 'return_tree')  # noqa
+        func = getattr(return_tree, '__func')
+        self.flow.current_function.re_value = func.re_value
+        self.refresh_return_tree(func)
 
     @Slot(bool)
     def slot_test(self, start: bool):
