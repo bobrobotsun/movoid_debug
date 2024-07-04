@@ -17,6 +17,7 @@ class Flow:
     def __init__(self):
         self.main = MainFunction(self)
         self.current_function = self.main
+        self.error_function = None
         self.test = False
         self.raise_error = 0
         self.debug_type = 0
@@ -62,6 +63,7 @@ class Flow:
         :return: 如果return 2 则是需要continue。如果return 1 则是需要 raise Error
         """
         self.test = True
+        self.error_function = self.current_function
         flag = self.analyse_target_debug_flag(*debug_flag)
         if flag == 0:
             self.get_error_step()
@@ -70,6 +72,7 @@ class Flow:
             re_value = flag
             if flag == 2:
                 self.continue_error_list.append([err, traceback_str])
+        self.error_function = None
         self.test = False
         return re_value
 
@@ -212,7 +215,7 @@ class MainFunction(BasicFunction):
 class FlowFunction(BasicFunction):
     func_type = 'function'
 
-    def __init__(self, func, flow, include=None, exclude=None, teardown_function=None):
+    def __init__(self, func, flow, include=None, exclude=None, teardown_function=None, debug_default=None, debug_debug=None):
         """
 
         """
@@ -234,18 +237,18 @@ class FlowFunction(BasicFunction):
         self.flow = flow
         self.parent = flow.current_function
         self.raise_error = False
-        self.debug_mode = {
-            0: True,
-            1: True
-        }
+        self.debug_default = debug_default
+        self.debug_debug = debug_debug
 
     def __call__(self, *args, **kwargs):
+        debug_default = kwargs.pop('__debug_default', None)
+        debug_debug = kwargs.pop('__debug_debug', None)
+        debug_default = self.debug_default if debug_default is None else debug_default
+        debug_debug = self.debug_debug if debug_debug is None else debug_debug
         if self.flow.test:
-            test = TestFunction(self.func, self.flow, self)
-            test(*args, **kwargs)
+            test = TestFunction(func=self.func, flow=self.flow, ori=self, debug_default=debug_default, debug_debug=debug_debug)
+            return test(*args, **kwargs)
         else:
-            debug_default = kwargs.pop('__debug_default', None)
-            debug_debug = kwargs.pop('__debug_debug', None)
             try:
                 self.args = args
                 self.kwargs = kwargs
@@ -281,19 +284,23 @@ class FlowFunction(BasicFunction):
 class TestFunction(BasicFunction):
     func_type = 'test'
 
-    def __init__(self, func, flow, ori):
+    def __init__(self, func, flow, ori, debug_default=None, debug_debug=None):
         super().__init__()
         self.func = func
         self.flow = flow
         self.ori = ori
+        self.debug_default = debug_default
+        self.debug_debug = debug_debug
         self.parent = self.flow.current_function
 
     def __call__(self, *args, **kwargs):
+        debug_default = kwargs.pop('__debug_default', None)
+        debug_debug = kwargs.pop('__debug_debug', None)
+        debug_default = self.debug_default if debug_default is None else debug_default
+        debug_debug = self.debug_debug if debug_debug is None else debug_debug
         if self.end:
-            self.ori(*args, **kwargs)
+            self.ori(*args, __debug_default=debug_default, __debug_debug=debug_debug, **kwargs)
         else:
-            debug_default = kwargs.pop('__debug_default', None)
-            debug_debug = kwargs.pop('__debug_debug', None)
             try:
                 self.args = args
                 self.kwargs = kwargs
@@ -321,10 +328,11 @@ class TestFunction(BasicFunction):
             else:
                 self.has_return = True
                 self.re_value = re_value
-                if self.ori == self.flow.current_function:
+                if self.ori == self.flow.error_function:
                     self.ori.re_value = self.re_value
                 return self.re_value
             finally:
+                self.ori.teardown_function(args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, traceback_str=self.traceback)
                 self.end = True
                 self.flow.current_function_end()
 
@@ -354,8 +362,8 @@ def debug(debug_default=None, debug_debug=None, include_error=None, exclude_erro
         else:
             @wraps(func)
             def wrapper(*args, __debug_default=debug_default, __debug_debug=debug_debug, **kwargs):
-                temp = FlowFunction(func, FLOW, include=include_error, exclude=exclude_error, teardown_function=teardown_function)
-                re_value = temp(*args, __debug_default=debug_default, __debug_debug=debug_debug, **kwargs)
+                temp = FlowFunction(func, FLOW, include=include_error, exclude=exclude_error, teardown_function=teardown_function, debug_default=__debug_default, debug_debug=__debug_debug)
+                re_value = temp(*args, **kwargs)
                 return re_value
 
             setattr(wrapper, '__debug', True)
