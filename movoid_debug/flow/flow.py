@@ -54,12 +54,12 @@ class Flow:
         else:
             self.current_function = self.current_function.parent
 
-    def when_error(self, *debug_flag, err=None, traceback_str=None):
+    def when_error(self, *debug_flag, err=None, trace_back=None):
         """
         这是供FlowFunction反调的函数，保证当前的处理模式是预选模式
         :param debug_flag: 这是个传入的参数，就是把自己的参数传进去
         :param err: 把故障传上来
-        :param traceback_str: 把traceback信息传上来
+        :param trace_back: 把traceback信息传上来
         :return: 如果return 2 则是需要continue。如果return 1 则是需要 raise Error
         """
         self.test = True
@@ -71,24 +71,24 @@ class Flow:
         else:
             re_value = flag
             if flag == 2:
-                self.continue_error_list.append([err, traceback_str])
+                self.continue_error_list.append([err, trace_back])
         self.error_function = None
         self.test = False
         return re_value
 
-    def when_test_error(self, *debug_flag, err=None, traceback_str=None):
+    def when_test_error(self, *debug_flag, err=None, trace_back=None):
         """
         这是供TestFunction反调的函数，保证当前的处理模式是预选模式
         :param debug_flag: 这是个传入的参数，就是把自己的参数传进去
         :param err: 把故障传上来
-        :param traceback_str: 把traceback信息传上来
+        :param trace_back: 把traceback信息传上来
         :return: 如果return 2 则是需要continue。如果return 1 则是需要 raise Error
         """
         flag = self.analyse_target_debug_flag(*debug_flag)
         flag = max(1, flag)
         re_value = flag
         if flag == 2:
-            self.continue_error_list.append([err, traceback_str])
+            self.continue_error_list.append([err, trace_back])
         return re_value
 
     def when_error_debug(self):
@@ -221,7 +221,7 @@ class FlowFunction(BasicFunction):
         """
         super().__init__()
         self.func = func
-        self.teardown_function = Function() if teardown_function is None else FlowFunction(Function(teardown_function), flow, include=include, exclude=exclude, teardown_function=None)
+        self.teardown_function = (lambda args, kwargs, re_value, error, trace_back: re_value) if teardown_function is None else FlowFunction(Function(teardown_function), flow, include=include, exclude=exclude, teardown_function=None)
         if include is None:
             self.include_error = Exception
             if exclude is None:
@@ -263,22 +263,21 @@ class FlowFunction(BasicFunction):
                     raise err
                 self.error = err
                 self.traceback = traceback.format_exc()
-                error_flag = self.flow.when_error(debug_default, debug_debug, err=self.error, traceback_str=self.traceback)
+                error_flag = self.flow.when_error(debug_default, debug_debug, err=self.error, trace_back=self.traceback)
                 if error_flag == 1:
                     self.flow.raise_error -= 1
                     raise err
-                elif error_flag == 2:
-                    return self.re_value
             except Exception as err:
                 raise err
             else:
                 self.has_return = True
                 self.re_value = re_value
-                return self.re_value
             finally:
-                self.teardown_function(args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, traceback_str=self.traceback)
+                self.re_value = self.teardown_function(args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback)
                 self.end = True
                 self.flow.current_function_end()
+                print('flow function',self.func, self.re_value)
+                return self.re_value
 
 
 class TestFunction(BasicFunction):
@@ -315,11 +314,9 @@ class TestFunction(BasicFunction):
             except self.ori.include_error as err:
                 self.error = err
                 self.traceback = traceback.format_exc()
-                error_flag = self.flow.when_test_error(debug_default, debug_debug, err=self.error, traceback_str=self.traceback)
+                error_flag = self.flow.when_test_error(debug_default, debug_debug, err=self.error, trace_back=self.traceback)
                 if error_flag == 1:
                     raise err
-                elif error_flag == 2:
-                    return self.re_value
             except Exception as err:
                 self.error = err
                 self.traceback = traceback.format_exc()
@@ -330,11 +327,11 @@ class TestFunction(BasicFunction):
                 self.re_value = re_value
                 if self.ori == self.flow.error_function:
                     self.ori.re_value = self.re_value
-                return self.re_value
             finally:
-                self.ori.teardown_function(args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, traceback_str=self.traceback)
+                self.re_value = self.ori.teardown_function(args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback)
                 self.end = True
                 self.flow.current_function_end()
+                return self.re_value
 
 
 class TestError(Exception):
@@ -439,10 +436,11 @@ class DebugError(Exception):
 def teardown(func):
     """
     这个函数可以规范teardown函数，保证无论怎么写，都不会因为参数的传递而报错
+    想要规范teardown函数，请务必保证该函数拥有一个返回值，以防止运行过程中，没有返回值导致的错误
     """
 
     @wraps_ori(func)
-    def wrapper(args=None, kwargs=None, re_value=None, error=None, traceback_str=None):  # noqa
+    def wrapper(args=None, kwargs=None, re_value=None, error=None, trace_back=None) -> object:  # noqa
         pass
 
     return wrapper

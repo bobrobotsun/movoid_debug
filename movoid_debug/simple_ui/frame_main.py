@@ -18,3 +18,9 @@ class FrameMainWindow(QMainWindow):
         self.init_ui()
         self.show()
         self.refresh_ui()
+
+    def init_ui(self):
+        pass
+
+    def refresh_ui(self):
+        pass

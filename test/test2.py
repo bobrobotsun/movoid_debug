@@ -8,7 +8,7 @@ Description:
 """
 import traceback
 
-from movoid_debug.flow.flow import debug, debug_exclude
+from movoid_debug.flow.flow import debug, debug_exclude, teardown
 
 
 @debug
@@ -45,9 +45,28 @@ def test5():
     test6()
 
 
+do_value = True
+
+
 @debug
+@teardown
+def test6_teardown(args, kwargs, re_value, error, trace_back):
+    global do_value
+    do_value = 100
+    print('teardown', do_value)
+    if error:
+        print('final error', error)
+        return error
+    else:
+        print('final return', re_value)
+        return re_value
+
+
+@debug(teardown_function=test6_teardown)
 def test6(a=1, b=2):
-    raise Exception
+    global do_value
+    do_value = a + b
+    raise Exception(123321)
 
 
 @debug_exclude()
@@ -70,4 +89,5 @@ class Test:
 # test = Test()
 # test.test1()
 # test1()
-test4()
+print('test6', test6())
+print(do_value)
