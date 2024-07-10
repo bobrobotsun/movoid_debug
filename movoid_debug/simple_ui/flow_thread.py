@@ -20,5 +20,9 @@ class FlowThread(QThread):
 
     def run(self):
         self.signal_test.emit(True)
-        self.func(*self.args, **self.kwargs)
-        self.signal_test.emit(False)
+        try:
+            self.func(*self.args, **self.kwargs)
+        except:
+            pass
+        finally:
+            self.signal_test.emit(False)

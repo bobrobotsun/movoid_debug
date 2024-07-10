@@ -221,7 +221,7 @@ class FlowFunction(BasicFunction):
         """
         super().__init__()
         self.func = func
-        self.teardown_function = (lambda args, kwargs, re_value, error, trace_back: re_value) if teardown_function is None else FlowFunction(Function(teardown_function), flow, include=include, exclude=exclude, teardown_function=None)
+        self.teardown_function = (lambda args, kwargs, re_value, error, trace_back, has_return: re_value) if teardown_function is None else debug(debug_default, debug_debug, include, exclude, teardown_function=None)(teardown_function)
         if include is None:
             self.include_error = Exception
             if exclude is None:
@@ -247,7 +247,7 @@ class FlowFunction(BasicFunction):
         debug_debug = self.debug_debug if debug_debug is None else debug_debug
         if self.flow.test:
             test = TestFunction(func=self.func, flow=self.flow, ori=self, debug_default=debug_default, debug_debug=debug_debug)
-            return test(*args, **kwargs)
+            return test(*args, **kwargs, __debug_default=debug_default, __debug_debug=debug_debug)
         else:
             try:
                 self.args = args
@@ -267,17 +267,19 @@ class FlowFunction(BasicFunction):
                 if error_flag == 1:
                     self.flow.raise_error -= 1
                     raise err
+                elif error_flag == 2:
+                    self.has_return = True
             except Exception as err:
                 raise err
             else:
                 self.has_return = True
                 self.re_value = re_value
             finally:
-                self.re_value = self.teardown_function(args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback)
+                self.re_value = self.teardown_function(args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback, has_return=self.has_return)
                 self.end = True
                 self.flow.current_function_end()
-                print('flow function',self.func, self.re_value)
-                return self.re_value
+                if self.has_return:
+                    return self.re_value
 
 
 class TestFunction(BasicFunction):
@@ -317,6 +319,8 @@ class TestFunction(BasicFunction):
                 error_flag = self.flow.when_test_error(debug_default, debug_debug, err=self.error, trace_back=self.traceback)
                 if error_flag == 1:
                     raise err
+                elif error_flag == 2:
+                    self.has_return = True
             except Exception as err:
                 self.error = err
                 self.traceback = traceback.format_exc()
@@ -328,10 +332,11 @@ class TestFunction(BasicFunction):
                 if self.ori == self.flow.error_function:
                     self.ori.re_value = self.re_value
             finally:
-                self.re_value = self.ori.teardown_function(args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback)
+                self.re_value = self.ori.teardown_function(args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback, has_return=self.has_return)
                 self.end = True
                 self.flow.current_function_end()
-                return self.re_value
+                if self.has_return:
+                    return self.re_value
 
 
 class TestError(Exception):
@@ -440,7 +445,7 @@ def teardown(func):
     """
 
     @wraps_ori(func)
-    def wrapper(args=None, kwargs=None, re_value=None, error=None, trace_back=None) -> object:  # noqa
+    def wrapper(args=None, kwargs=None, re_value=None, error=None, trace_back=None, has_return=None) -> object:  # noqa
         pass
 
     return wrapper

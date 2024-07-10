@@ -95,7 +95,7 @@ class MainWindow(QMainWindow):
         return_tree = QTreeWidget(variable_tree_splitter)
         return_tree.setObjectName('return_tree')
         variable_tree_splitter.addWidget(return_tree)
-        return_tree.setHeaderLabels(['func', 'type', 'value'])
+        return_tree.setHeaderLabels(['return', 'type', 'value'])
         return_tree.itemDoubleClicked.connect(self.change_return_tree_value)
         variable_tree_splitter.setStretchFactor(1, 1)
 
@@ -216,6 +216,7 @@ class MainWindow(QMainWindow):
                 self.refresh_flow_tree_item(child, i[0])
                 if i[0] == select_func:
                     self.findChild(QTreeWidget, 'flow_tree').setCurrentItem(child)  # noqa
+                    child.setExpanded(True)
                     self.refresh_arg_tree(i[0])
             else:
                 child = QTreeWidgetItem(top_item)

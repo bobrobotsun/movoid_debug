@@ -48,18 +48,12 @@ def test5():
 do_value = True
 
 
-@debug
 @teardown
-def test6_teardown(args, kwargs, re_value, error, trace_back):
+def test6_teardown(args, kwargs, re_value, error, trace_back, has_return):
     global do_value
     do_value = 100
     print('teardown', do_value)
-    if error:
-        print('final error', error)
-        return error
-    else:
-        print('final return', re_value)
-        return re_value
+    return re_value
 
 
 @debug(teardown_function=test6_teardown)
