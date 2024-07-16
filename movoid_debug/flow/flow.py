@@ -346,7 +346,7 @@ class TestError(Exception):
 FLOW = Flow()
 
 
-def debug(debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None):
+def debug(debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None, force=False):
     """
     作为装饰器使用，使该函数会被debug覆盖
     :param debug_default: 默认情况下的处理方法，0→1
@@ -354,27 +354,32 @@ def debug(debug_default=None, debug_debug=None, include_error=None, exclude_erro
     :param include_error: 仅抓取这些bug
     :param exclude_error: 不抓取这些bug
     :param teardown_function: 统一的teardown函数，需要传入参数、返回值、错误信息
+    :param force: 强制将debug 逻辑转换为当前逻辑
     """
     if callable(debug_default):
         return debug()(debug_default)
 
     def dec(func):
         if getattr(func, '__debug', False):
-            return func
-        else:
-            @wraps(func)
-            def wrapper(*args, __debug_default=debug_default, __debug_debug=debug_debug, **kwargs):
-                temp = FlowFunction(func, FLOW, include=include_error, exclude=exclude_error, teardown_function=teardown_function, debug_default=__debug_default, debug_debug=__debug_debug)
-                re_value = temp(*args, **kwargs)
-                return re_value
+            if force:
+                func = getattr(func, '__function')
+            else:
+                return func
 
-            setattr(wrapper, '__debug', True)
-            return wrapper
+        @wraps(func)
+        def wrapper(*args, __debug_default=debug_default, __debug_debug=debug_debug, **kwargs):
+            temp = FlowFunction(func, FLOW, include=include_error, exclude=exclude_error, teardown_function=teardown_function, debug_default=__debug_default, debug_debug=__debug_debug)
+            re_value = temp(*args, **kwargs)
+            return re_value
+
+        setattr(wrapper, '__debug', True)
+        setattr(wrapper, '__function', func)
+        return wrapper
 
     return dec
 
 
-def debug_include(*name_list, debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None):
+def debug_include(*name_list, debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None, force=False):
     """
     作为装饰器使用，传入的若干名称，都会搜索相应的函数，让后对这些名字的函数进行debug
     :param name_list:
@@ -383,6 +388,7 @@ def debug_include(*name_list, debug_default=None, debug_debug=None, include_erro
     :param include_error: 仅抓取这些bug
     :param exclude_error: 不抓取这些bug
     :param teardown_function: 统一的teardown函数，需要传入参数、返回值、错误信息
+    :param force: 满足规则的强制转换为当前的debug逻辑
     """
 
     def dec(cls):
@@ -390,13 +396,36 @@ def debug_include(*name_list, debug_default=None, debug_debug=None, include_erro
             if hasattr(cls, name):
                 func = getattr(cls, name)
                 if callable(func):
-                    setattr(cls, name, debug(debug_default=debug_default, debug_debug=debug_debug, include_error=include_error, exclude_error=exclude_error, teardown_function=teardown_function)(func))
+                    setattr(cls, name, debug(debug_default=debug_default, debug_debug=debug_debug, include_error=include_error, exclude_error=exclude_error, teardown_function=teardown_function, force=force)(func))
         return cls
 
     return dec
 
 
-def debug_exclude(*name_list, debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None):
+def debug_include_regex(*name_list, debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None, force=False):
+    """
+    作为装饰器使用，传入的若干名称，都会搜索相应的函数，让后对这些名字的函数进行debug
+    :param name_list:
+    :param debug_default: 默认情况下的处理方法，0→1
+    :param debug_debug: debug状态下的处理方法，0
+    :param include_error: 仅抓取这些bug
+    :param exclude_error: 不抓取这些bug
+    :param teardown_function: 统一的teardown函数，需要传入参数、返回值、错误信息
+    :param force: 满足规则的强制转换为当前的debug逻辑
+    """
+
+    def dec(cls):
+        for name in name_list:
+            if hasattr(cls, name):
+                func = getattr(cls, name)
+                if callable(func):
+                    setattr(cls, name, debug(debug_default=debug_default, debug_debug=debug_debug, include_error=include_error, exclude_error=exclude_error, teardown_function=teardown_function, force=force)(func))
+        return cls
+
+    return dec
+
+
+def debug_exclude(*name_list, debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None, force=False):
     """
     作为装饰器使用，除了__开头和列表里的名称，所有的函数均会被增加debug
     不输入的情况下，会包含所有的函数
@@ -413,7 +442,7 @@ def debug_exclude(*name_list, debug_default=None, debug_debug=None, include_erro
             if not name.startswith('__') and name not in name_list:
                 func = getattr(cls, name)
                 if callable(func):
-                    setattr(cls, name, debug(debug_default=debug_default, debug_debug=debug_debug, include_error=include_error, exclude_error=exclude_error, teardown_function=teardown_function)(func))
+                    setattr(cls, name, debug(debug_default=debug_default, debug_debug=debug_debug, include_error=include_error, exclude_error=exclude_error, teardown_function=teardown_function, force=force)(func))
         return cls
 
     return dec
