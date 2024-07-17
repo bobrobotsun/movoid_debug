@@ -455,7 +455,7 @@ class DebugError(Exception):
     def __str__(self):
         re_str = ''
         for err, trace in self.args:
-            re_str += f'{type(err).__name__}\n'
+            re_str += f'{type(err).__name__}:{err}\n'
         re_str.strip('\n')
         return re_str
 
