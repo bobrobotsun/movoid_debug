@@ -9,4 +9,4 @@
 from .simple_debug import DEBUG, SimpleDebug
 from .simple_hot_pause import HOT_PAUSE, SimpleHotPause
 from .flow import (FLOW, Flow, FlowFunction,
-                   debug, debug_include, debug_exclude)
+                   debug, debug_include, debug_exclude, teardown)

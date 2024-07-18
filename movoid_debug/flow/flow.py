@@ -10,7 +10,7 @@ import inspect
 import sys
 import traceback
 
-from movoid_function import Function, wraps, analyse_args_value_from_function, wraps_ori
+from movoid_function import wraps, analyse_args_value_from_function, wraps_ori
 
 
 class Flow:
@@ -221,7 +221,7 @@ class FlowFunction(BasicFunction):
         """
         super().__init__()
         self.func = func
-        self.teardown_function = (lambda args, kwargs, re_value, error, trace_back, has_return: re_value) if teardown_function is None else debug(debug_default, debug_debug, include, exclude, teardown_function=None)(teardown_function)
+        self.teardown_function = (lambda function, args, kwargs, re_value, error, trace_back, has_return: re_value) if teardown_function is None else debug(debug_default, debug_debug, include, exclude, teardown_function=None)(teardown_function)
         if include is None:
             self.include_error = Exception
             if exclude is None:
@@ -275,7 +275,7 @@ class FlowFunction(BasicFunction):
                 self.has_return = True
                 self.re_value = re_value
             finally:
-                self.re_value = self.teardown_function(args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback, has_return=self.has_return)
+                self.re_value = self.teardown_function(function=self.func, args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback, has_return=self.has_return)
                 self.end = True
                 self.flow.current_function_end()
                 if self.has_return:
@@ -332,7 +332,7 @@ class TestFunction(BasicFunction):
                 if self.ori == self.flow.error_function:
                     self.ori.re_value = self.re_value
             finally:
-                self.re_value = self.ori.teardown_function(args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback, has_return=self.has_return)
+                self.re_value = self.ori.teardown_function(function=self.func, args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback, has_return=self.has_return)
                 self.end = True
                 self.flow.current_function_end()
                 if self.has_return:
@@ -435,6 +435,7 @@ def debug_exclude(*name_list, debug_default=None, debug_debug=None, include_erro
     :param include_error: 仅抓取这些bug
     :param exclude_error: 不抓取这些bug
     :param teardown_function: 统一的teardown函数，需要传入参数、返回值、错误信息
+    :param force: 满足规则的强制转换为当前的debug逻辑
     """
 
     def dec(cls):
@@ -474,7 +475,7 @@ def teardown(func):
     """
 
     @wraps_ori(func)
-    def wrapper(args=None, kwargs=None, re_value=None, error=None, trace_back=None, has_return=None) -> object:  # noqa
+    def wrapper(function=None, args=None, kwargs=None, re_value=None, error=None, trace_back=None, has_return=None) -> object:  # noqa
         pass
 
     return wrapper
