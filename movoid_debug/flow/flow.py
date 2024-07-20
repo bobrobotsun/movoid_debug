@@ -10,7 +10,7 @@ import inspect
 import sys
 import traceback
 
-from movoid_function import wraps, analyse_args_value_from_function, wraps_ori
+from movoid_function import wraps, analyse_args_value_from_function, wraps_ori, adapt_call
 
 
 class Flow:
@@ -275,7 +275,8 @@ class FlowFunction(BasicFunction):
                 self.has_return = True
                 self.re_value = re_value
             finally:
-                self.re_value = self.teardown_function(function=self.func, args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback, has_return=self.has_return)
+                teardown_args = dict(function=self.func, args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback, has_return=self.has_return)
+                self.re_value = adapt_call(self.teardown_function, [], teardown_args, self.func, self.args, self.kwargs)
                 self.end = True
                 self.flow.current_function_end()
                 if self.has_return:
@@ -332,7 +333,8 @@ class TestFunction(BasicFunction):
                 if self.ori == self.flow.error_function:
                     self.ori.re_value = self.re_value
             finally:
-                self.re_value = self.ori.teardown_function(function=self.func, args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback, has_return=self.has_return)
+                teardown_args = dict(function=self.func, args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback, has_return=self.has_return)
+                self.re_value = adapt_call(self.ori.teardown_function, [], teardown_args, self.func, self.args, self.kwargs)
                 self.end = True
                 self.flow.current_function_end()
                 if self.has_return:
