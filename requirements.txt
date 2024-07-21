@@ -1,4 +1,6 @@
 twine
 build
+pytest
+pytest-html
 movoid_function
 pyside6
