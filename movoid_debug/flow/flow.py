@@ -53,7 +53,7 @@ class Flow:
         sep = str(sep)
         end = str(end)
         print_text = sep.join(text_list) + end
-        self.current_function.add_son(print_text, 'log')
+        self.current_function.add_son(print_text, '')
 
     def current_function_end(self):
         """
