@@ -2,5 +2,6 @@ twine
 build
 pytest
 pytest-html
+movoid_config
 movoid_function
 pyside6

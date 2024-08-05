@@ -15,7 +15,8 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     install_requires=[
-        'movoid_function'
+        "movoid_config",
+        "movoid_function"
     ],
     extras_require={
         'debug': ['pyside6']

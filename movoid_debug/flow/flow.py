@@ -10,6 +10,7 @@ import inspect
 import sys
 import traceback
 
+from movoid_config import Config
 from movoid_function import wraps, analyse_args_value_from_function, wraps_ori, adapt_call
 
 
@@ -20,26 +21,23 @@ class Flow:
         self.error_function = None
         self.test = False
         self.raise_error = 0
-        self.debug_type = 0
-        self.debug_flag = 0
-        self.init_debug_param()
+        self.config = Config({
+            'debug': {
+                "type": "int",
+                "default": 0,
+                "full": "debug",
+                "key": "debug",
+            },
+            'flag': {
+                "type": "int",
+                "default": 0,
+                "key": "debug_flag",
+            },
+        }, 'debug.ini')
+        self.debug_type = self.config.debug
+        self.debug_flag = self.config.flag
         self.app = None
         self.continue_error_list = []
-
-    def init_debug_param(self):
-        for i in sys.argv:
-            if i.startswith('__debug='):
-                if i[8:] in ('1', 'debug'):
-                    self.debug_type = 1
-                else:
-                    self.debug_type = 0
-            elif i.startswith('__debug_flag='):
-                if i[13:] in ('0', 'debug'):
-                    self.debug_flag = 0
-                elif i[13:] in ('2',):
-                    self.debug_flag = 2
-                else:
-                    self.debug_flag = 1
 
     def set_current_function(self, func):
         self.current_function.add_son(func)
