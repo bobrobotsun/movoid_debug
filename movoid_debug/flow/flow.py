@@ -43,6 +43,16 @@ class Flow:
         self.current_function.add_son(func)
         self.current_function = func
 
+    def print(self, *args, sep=' ', end='\n'):
+        """
+        打印内容
+        """
+        text_list = [str(_) for _ in args]
+        sep = str(sep)
+        end = str(end)
+        print_text = sep.join(text_list) + end
+        self.current_function.add_son(print_text, '')
+
     def current_function_end(self):
         """
         包内的函数，如果某个函数执行完毕后，需要调用这个函数，来告知flow退出当前函数
