@@ -13,6 +13,15 @@ import traceback
 from movoid_config import Config
 from movoid_function import wraps, analyse_args_value_from_function, wraps_ori, adapt_call
 
+from enum import Enum
+
+TYPE_NO_UI = 0  # 强制不使用UI相关的内容
+TYPE_UI = 1  # 可以使用UI进行过程排查
+
+FLAG_UI = 0  # 当报错时，弹到UI上进行报错
+FLAG_RAISE = 1  # 当报错时，将error raise出去
+FLAG_PASS = 2  # 当报错时，将error储存起来，在适当时机再抛出
+
 
 class Flow:
     def __init__(self):
@@ -20,28 +29,49 @@ class Flow:
         self.current_function = self.main
         self.error_function = None
         self.test = False
-        self.raise_error = 0
+        self._raise_error = 0
+        self.raise_until_exit = False  # 这个参数不要开启，一旦修改为True，那么flow将尝试一直raise Error直到软件结束为止
         self.config = Config({
             'debug': {
                 "type": "int",
-                "default": 0,
+                "default": TYPE_NO_UI,
                 "full": "debug",
                 "key": "debug",
             },
             'flag': {
                 "type": "int",
-                "default": 0,
+                "default": FLAG_UI,
                 "key": "debug_flag",
             },
-        }, 'debug.ini')
+        }, 'movoid_debug.ini', False)
         self.debug_type = self.config.debug
         self.debug_flag = self.config.flag
         self.app = None
         self.continue_error_list = []
 
+    @property
+    def raise_error(self):
+        return self._raise_error
+
+    @raise_error.setter
+    def raise_error(self, value):
+        if value < 0:
+            self._raise_error = 0
+        self._raise_error = value
+
     def set_current_function(self, func):
         self.current_function.add_son(func)
         self.current_function = func
+
+    def print(self, *args, sep=' ', end='\n'):
+        """
+        打印内容
+        """
+        text_list = [str(_) for _ in args]
+        sep = str(sep)
+        end = str(end)
+        print_text = sep.join(text_list) + end
+        self.current_function.add_son(print_text, '')
 
     def current_function_end(self):
         """
@@ -63,12 +93,12 @@ class Flow:
         self.test = True
         self.error_function = self.current_function
         flag = self.analyse_target_debug_flag(*debug_flag)
-        if flag == 0:
+        if flag == FLAG_UI:  # 如果需要调用UI，那么要根据UI的结果决定最后的flag结论
             self.get_error_step()
-            re_value = self.when_error_debug()
-        else:
+            re_value = self.when_error_window()
+        else:  # 非UI情况下，不需要修改flag逻辑
             re_value = flag
-            if flag == 2:
+            if flag == FLAG_PASS:
                 self.continue_error_list.append([err, trace_back])
         self.error_function = None
         self.test = False
@@ -83,13 +113,13 @@ class Flow:
         :return: 如果return 2 则是需要continue。如果return 1 则是需要 raise Error
         """
         flag = self.analyse_target_debug_flag(*debug_flag)
-        flag = max(1, flag)
+        flag = max(FLAG_RAISE, flag)  # 在test function的时候，不可以重复调用UI
         re_value = flag
-        if flag == 2:
+        if flag == FLAG_PASS:
             self.continue_error_list.append([err, trace_back])
         return re_value
 
-    def when_error_debug(self):
+    def when_error_window(self):
         """
         调出一个debug窗口来进行debug，编辑请前往main_window.py进行
         """
@@ -98,6 +128,8 @@ class Flow:
             self.app = MainApp()
         self.app.main = MainWindow(self)
         self.app.exec()
+        if self.raise_until_exit:
+            return 1
         return 2 if self.raise_error == 0 else 1
 
     def analyse_target_debug_flag(self, default_flag=None, *debug_flag):
@@ -115,7 +147,7 @@ class Flow:
         tar_flag = debug_flag[0] if tar_ind_flag is None else tar_ind_flag
         flag = self.debug_flag if tar_flag is None else tar_flag
         flag = max(0, min(2, flag))
-        if self.debug_type == 0:
+        if self.debug_type == 0:  # 如果是标准运行逻辑，那么不可以调用UI
             flag = max(1, flag)
         return flag
 
@@ -213,7 +245,7 @@ class MainFunction(BasicFunction):
 class FlowFunction(BasicFunction):
     func_type = 'function'
 
-    def __init__(self, func, flow, include=None, exclude=None, teardown_function=None, debug_default=None, debug_debug=None):
+    def __init__(self, func, flow: Flow, include=None, exclude=None, teardown_function=None, debug_default: int = None, debug_debug: int = None):
         """
 
         """
@@ -234,7 +266,6 @@ class FlowFunction(BasicFunction):
         self.kwarg_value = {}
         self.flow = flow
         self.parent = flow.current_function
-        self.raise_error = False
         self.debug_default = debug_default
         self.debug_debug = debug_debug
 
@@ -256,16 +287,18 @@ class FlowFunction(BasicFunction):
             except self.exclude_error as err:
                 raise err
             except self.include_error as err:
-                if self.flow.raise_error != 0:
+                if self.flow.raise_until_exit:
+                    raise err
+                if self.flow.raise_error > 0:
                     self.flow.raise_error -= 1
                     raise err
                 self.error = err
                 self.traceback = traceback.format_exc()
                 error_flag = self.flow.when_error(debug_default, debug_debug, err=self.error, trace_back=self.traceback)
-                if error_flag == 1:
+                if error_flag == FLAG_RAISE:
                     self.flow.raise_error -= 1
                     raise err
-                elif error_flag == 2:
+                elif error_flag == FLAG_PASS:
                     self.has_return = True
             except Exception as err:
                 raise err
@@ -313,12 +346,14 @@ class TestFunction(BasicFunction):
             except self.ori.exclude_error as err:
                 raise err
             except self.ori.include_error as err:
+                if self.flow.raise_until_exit:
+                    raise err
                 self.error = err
                 self.traceback = traceback.format_exc()
                 error_flag = self.flow.when_test_error(debug_default, debug_debug, err=self.error, trace_back=self.traceback)
-                if error_flag == 1:
+                if error_flag == FLAG_RAISE:
                     raise err
-                elif error_flag == 2:
+                elif error_flag == FLAG_PASS:
                     self.has_return = True
             except Exception as err:
                 self.error = err
@@ -346,7 +381,7 @@ class TestError(Exception):
 FLOW = Flow()
 
 
-def debug(debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None, force=False):
+def debug(debug_default: int = None, debug_debug: int = None, include_error=None, exclude_error=None, teardown_function=None, force=False):
     """
     作为装饰器使用，使该函数会被debug覆盖
     :param debug_default: 默认情况下的处理方法，0→1
