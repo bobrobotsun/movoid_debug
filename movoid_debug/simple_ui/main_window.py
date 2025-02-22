@@ -362,7 +362,7 @@ class MainWindow(QMainWindow):
         self.close()
 
     def run_raise_until_exit(self):
-        self.flow.raise_until_exit = -1
+        self.flow.raise_until_exit = True
         self.close()
 
     def run_raise_one(self):

@@ -29,7 +29,7 @@ class Flow:
         self.current_function = self.main
         self.error_function = None
         self.test = False
-        self.raise_error = 0
+        self._raise_error = 0
         self.raise_until_exit = False  # 这个参数不要开启，一旦修改为True，那么flow将尝试一直raise Error直到软件结束为止
         self.config = Config({
             'debug': {
@@ -48,6 +48,16 @@ class Flow:
         self.debug_flag = self.config.flag
         self.app = None
         self.continue_error_list = []
+
+    @property
+    def raise_error(self):
+        return self._raise_error
+
+    @raise_error.setter
+    def raise_error(self, value):
+        if value < 0:
+            self._raise_error = 0
+        self._raise_error = value
 
     def set_current_function(self, func):
         self.current_function.add_son(func)
@@ -118,6 +128,8 @@ class Flow:
             self.app = MainApp()
         self.app.main = MainWindow(self)
         self.app.exec()
+        if self.raise_until_exit:
+            return 1
         return 2 if self.raise_error == 0 else 1
 
     def analyse_target_debug_flag(self, default_flag=None, *debug_flag):
@@ -233,7 +245,7 @@ class MainFunction(BasicFunction):
 class FlowFunction(BasicFunction):
     func_type = 'function'
 
-    def __init__(self, func, flow, include=None, exclude=None, teardown_function=None, debug_default=None, debug_debug=None):
+    def __init__(self, func, flow: Flow, include=None, exclude=None, teardown_function=None, debug_default: int = None, debug_debug: int = None):
         """
 
         """
@@ -284,6 +296,7 @@ class FlowFunction(BasicFunction):
                 self.traceback = traceback.format_exc()
                 error_flag = self.flow.when_error(debug_default, debug_debug, err=self.error, trace_back=self.traceback)
                 if error_flag == FLAG_RAISE:
+                    self.flow.raise_error -= 1
                     raise err
                 elif error_flag == FLAG_PASS:
                     self.has_return = True
@@ -368,7 +381,7 @@ class TestError(Exception):
 FLOW = Flow()
 
 
-def debug(debug_default=None, debug_debug=None, include_error=None, exclude_error=None, teardown_function=None, force=False):
+def debug(debug_default: int = None, debug_debug: int = None, include_error=None, exclude_error=None, teardown_function=None, force=False):
     """
     作为装饰器使用，使该函数会被debug覆盖
     :param debug_default: 默认情况下的处理方法，0→1
