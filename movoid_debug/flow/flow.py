@@ -43,7 +43,7 @@ class Flow:
                 "default": FLAG_UI,
                 "key": "debug_flag",
             },
-        }, 'movoid_debug.ini')
+        }, 'movoid_debug.ini', False)
         self.debug_type = self.config.debug
         self.debug_flag = self.config.flag
         self.app = None
