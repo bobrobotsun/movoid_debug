@@ -175,10 +175,10 @@ class MainWindow(QMainWindow):
         run_continue_button.clicked.connect(lambda: self.run_continue())
         run_grid.addStretch(1)
 
-        run_raise_button = QPushButton('raise错误', run_widget)
-        run_raise_button.setObjectName('run_raise_button')
-        run_grid.addWidget(run_raise_button)
-        run_raise_button.clicked.connect(lambda: self.run_raise())
+        run_raise_exit_button = QPushButton('raise错误直到退出', run_widget)
+        run_raise_exit_button.setObjectName('run_raise_exit_button')
+        run_grid.addWidget(run_raise_exit_button)
+        run_raise_exit_button.clicked.connect(lambda: self.run_raise_until_exit())
 
         run_raise_one_button = QPushButton('raise错误至上一层', run_widget)
         run_raise_one_button.setObjectName('run_raise_one_button')
@@ -358,10 +358,11 @@ class MainWindow(QMainWindow):
             self.thread.start()
 
     def run_continue(self):
+        self.flow.raise_error = 0
         self.close()
 
-    def run_raise(self):
-        self.flow.raise_error = -1
+    def run_raise_until_exit(self):
+        self.flow.raise_until_exit = -1
         self.close()
 
     def run_raise_one(self):
