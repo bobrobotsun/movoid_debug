@@ -1,6 +1,7 @@
 twine
 build
 pytest
+requests
 pytest-html
 movoid_config
 movoid_function

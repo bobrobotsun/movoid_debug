@@ -8,8 +8,10 @@
 """
 import re
 
+import requests
 from PySide6.QtCore import Qt, Slot
-from PySide6.QtWidgets import QMainWindow, QApplication, QTreeWidget, QTextEdit, QVBoxLayout, QPushButton, QTreeWidgetItem, QHeaderView, QSplitter, QWidget
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QMainWindow, QApplication, QTreeWidget, QTextEdit, QVBoxLayout, QPushButton, QTreeWidgetItem, QHeaderView, QSplitter, QWidget, QDialog, QLabel
 
 from .flow_thread import FlowThread
 from .value_set_window import ValueSetWindow, KeySetWindow, tree_item_can_expand, expand_tree_item_to_show_dir
@@ -63,11 +65,12 @@ class MainWindow(QMainWindow):
         flow_tree.setObjectName('flow_tree')
         main_splitter.addWidget(flow_tree)
         main_splitter.setStretchFactor(0, 12)
-        flow_tree.setHeaderLabels(['type', 'func', 'status'])
+        flow_tree.setHeaderLabels(['type', 'func', 'status', 'last time', 'start time', 'end time'])
         flow_tree_header = flow_tree.header()
         flow_tree_header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         flow_tree_header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         flow_tree.itemClicked.connect(self.click_flow_tree_item)
+        flow_tree.itemDoubleClicked.connect(self.double_click_flow_tree_item)
 
         error_text_splitter = QSplitter(Qt.Vertical, main_splitter)
         main_splitter.addWidget(error_text_splitter)
@@ -207,19 +210,31 @@ class MainWindow(QMainWindow):
         arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')  # noqa
         select_func = getattr(arg_tree, '__func', None)
         for i in flow.son:
+            child = QTreeWidgetItem(top_item)
             if i[1] == 'function':
-                child = QTreeWidgetItem(top_item)
                 child.setText(0, i[0].func_type)
                 child.setText(1, i[0].func.__name__)
                 child.setText(2, str(i[0].result(True, tostring=True)))
+                child.setText(3, i[0].time_str_all_last)
+                child.setText(4, i[0].time_str_start)
+                child.setText(5, i[0].time_str_all_end)
                 setattr(child, '__func', i[0])
                 self.refresh_flow_tree_item(child, i[0])
                 if i[0] == select_func:
                     self.findChild(QTreeWidget, 'flow_tree').setCurrentItem(child)  # noqa
                     child.setExpanded(True)
                     self.refresh_arg_tree(i[0])
+            elif i[1] == 'web_pic':
+                child.setText(0, 'web picture')
+                child.setText(1, str(i[0]))
+                setattr(child, '__type', 'web_pic')
+                setattr(child, '__value', str(i[0]))
+            elif i[1] == 'local_pic':
+                child.setText(0, 'local picture')
+                child.setText(1, str(i[0]))
+                setattr(child, '__type', 'local_pic')
+                setattr(child, '__value', str(i[0]))
             else:
-                child = QTreeWidgetItem(top_item)
                 child.setText(0, 'log')
                 child.setText(1, str(i[0]))
 
@@ -228,6 +243,15 @@ class MainWindow(QMainWindow):
         self.refresh_arg_tree(current_func)
         self.refresh_return_tree(current_func)
         self.refresh_current_text()
+
+    def double_click_flow_tree_item(self, current_item):
+        current_type = getattr(current_item, '__type', None)
+        if current_type == 'web_pic':
+            PixmapWindow.show_web_pixmap(getattr(current_item, '__value'))
+        if current_type == 'local_pic':
+            PixmapWindow.show_local_pixmap(getattr(current_item, '__value'))
+        else:
+            self.click_flow_tree_item(current_item)
 
     def refresh_current_text(self):
         current_text: QTextEdit = self.findChild(QTextEdit, 'current_text')  # noqa
@@ -491,3 +515,38 @@ class MainWindow(QMainWindow):
     def slot_test(self, start: bool):
         self.testing = start
         self.refresh_ui()
+
+
+class PixmapWindow(QDialog):
+    def __init__(self, pixmap: QPixmap):
+        super().__init__()
+        self.pixmap = pixmap
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        label = QLabel()
+        layout.addWidget(label)
+        label.setPixmap(self.pixmap)
+        label.setScaledContents(True)
+        original_width = self.pixmap.width()
+        original_height = self.pixmap.height()
+        self.setGeometry(0, 0, original_width, original_height)
+
+    @classmethod
+    def show_web_pixmap(cls, url):
+        req = requests.get(url)
+        bit_pic = req.content
+        pixmap = QPixmap()
+        pixmap.loadFromData(bit_pic)
+        new_window = PixmapWindow(pixmap)
+        new_window.show()
+        new_window.exec()
+
+    @classmethod
+    def show_local_pixmap(cls, image_path):
+        pixmap = QPixmap(image_path)
+        new_window = PixmapWindow(pixmap)
+        new_window.show()
+        new_window.exec()

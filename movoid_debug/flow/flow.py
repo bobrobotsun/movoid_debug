@@ -6,8 +6,11 @@
 # Time          : 2024/4/14 16:15
 # Description   : 
 """
+import datetime
 import inspect
+import math
 import sys
+import time
 import traceback
 
 from movoid_config import Config
@@ -21,6 +24,33 @@ TYPE_UI = 1  # 可以使用UI进行过程排查
 FLAG_UI = 0  # 当报错时，弹到UI上进行报错
 FLAG_RAISE = 1  # 当报错时，将error raise出去
 FLAG_PASS = 2  # 当报错时，将error储存起来，在适当时机再抛出
+
+
+def _time_point_to_str(time_float):
+    re_str = ''
+    if time_float:
+        dt = datetime.datetime.fromtimestamp(time_float)
+        re_str = dt.strftime("%Y-%m-%d %H:%M:%S.%f")
+    return re_str
+
+
+def _time_last_to_str(time_float):
+    day = time_float // 86400
+    time_float -= day * 86400
+    hour = time_float // 3600
+    time_float -= hour * 3600
+    minute = time_float // 60
+    time_float -= minute * 60
+    second = math.floor(time_float)
+    millisecond = round((time_float - second) * 1e6)
+    re_str = f'{second:>02d}sec{millisecond:<06d}'
+    if day > 0 or hour > 0 or minute > 0:
+        re_str = f'{minute:>02d}min ' + re_str
+    if day > 0 or hour > 0:
+        re_str = f'{hour:>02d}h ' + re_str
+    if day > 0:
+        re_str = f'{day}days ' + re_str
+    return re_str
 
 
 class Flow:
@@ -72,6 +102,12 @@ class Flow:
         end = str(end)
         print_text = sep.join(text_list) + end
         self.current_function.add_son(print_text, '')
+
+    def web_pic(self, url):
+        self.current_function.add_son(url, 'web_pic')
+
+    def local_pic(self, image_path):
+        self.current_function.add_son(image_path, 'local_pic')
 
     def current_function_end(self):
         """
@@ -207,6 +243,49 @@ class BasicFunction:
         self.end = False
         self.has_return = False
         self.re_value = None
+        self.time_start = 0
+        self.time_self_end = 0
+        self.time_all_end = 0
+
+    @property
+    def time_str_start(self):
+        return _time_point_to_str(self.time_start)
+
+    @property
+    def time_str_self_end(self):
+        return _time_point_to_str(self.time_self_end)
+
+    @property
+    def time_str_all_end(self):
+        return _time_point_to_str(self.time_all_end)
+
+    @property
+    def time_self_last(self):
+        if self.time_self_end == 0:
+            if self.time_start == 0:
+                return 0
+            else:
+                return time.time() - self.time_start
+        else:
+            return self.time_self_end - self.time_start
+
+    @property
+    def time_str_self_last(self):
+        return _time_last_to_str(self.time_self_last)
+
+    @property
+    def time_all_last(self):
+        if self.time_all_end == 0:
+            if self.time_start == 0:
+                return 0
+            else:
+                return time.time() - self.time_start
+        else:
+            return self.time_all_end - self.time_start
+
+    @property
+    def time_str_all_last(self):
+        return _time_last_to_str(self.time_all_last)
 
     def result(self, simple=False, tostring=False):
         """
@@ -283,6 +362,7 @@ class FlowFunction(BasicFunction):
                 self.kwargs = kwargs
                 self.kwarg_value = analyse_args_value_from_function(self.func, *args, **kwargs)
                 self.flow.set_current_function(self)
+                self.time_start = time.time()
                 re_value = self.func(*self.args, **self.kwargs)
             except self.exclude_error as err:
                 raise err
@@ -306,10 +386,12 @@ class FlowFunction(BasicFunction):
                 self.has_return = True
                 self.re_value = re_value
             finally:
+                self.time_self_end = time.time()
                 teardown_args = dict(function=self.func, args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback, has_return=self.has_return)
                 self.re_value = adapt_call(self.teardown_function, [], teardown_args, self.func, self.args, self.kwargs)
                 self.end = True
                 self.flow.current_function_end()
+                self.time_all_end = time.time()
                 if self.has_return:
                     return self.re_value
 
@@ -325,6 +407,9 @@ class TestFunction(BasicFunction):
         self.debug_default = debug_default
         self.debug_debug = debug_debug
         self.parent = self.flow.current_function
+        self.time_start = 0
+        self.time_self_end = 0
+        self.time_all_end = 0
 
     def __call__(self, *args, **kwargs):
         debug_default = kwargs.pop('__debug_default', None)
@@ -339,6 +424,7 @@ class TestFunction(BasicFunction):
                 self.kwargs = kwargs
                 self.kwarg_value = analyse_args_value_from_function(self.func, *args, **kwargs)
                 self.flow.set_current_function(self)
+                self.time_start = time.time()
                 re_value = self.func(*args, **kwargs)
             except TestError as err:
                 if isinstance(self.parent, TestFunction):
@@ -366,10 +452,12 @@ class TestFunction(BasicFunction):
                 if self.ori == self.flow.error_function:
                     self.ori.re_value = self.re_value
             finally:
+                self.time_self_end = time.time()
                 teardown_args = dict(function=self.func, args=self.args, kwargs=self.kwargs, re_value=self.re_value, error=self.error, trace_back=self.traceback, has_return=self.has_return)
                 self.re_value = adapt_call(self.ori.teardown_function, [], teardown_args, self.func, self.args, self.kwargs)
                 self.end = True
                 self.flow.current_function_end()
+                self.time_all_end = time.time()
                 if self.has_return:
                     return self.re_value
 
