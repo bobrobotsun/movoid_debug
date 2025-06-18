@@ -322,7 +322,7 @@ class MainWindow(QMainWindow):
         if func is not None:
             return_tree: QTreeWidget = self.findChild(QTreeWidget, 'return_tree')  # noqa
             copy_return_button: QPushButton = self.findChild(QPushButton, 'copy_return_button')  # noqa
-            copy_return_button.setEnabled(func.re_value != self.flow.current_function.re_value)
+            copy_return_button.setEnabled(type(func).__name__ == 'TestFunction' and func.ori == self.flow.current_function and func.has_return)
 
             setattr(return_tree, '__func', func)
             return_tree.clear()
