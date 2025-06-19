@@ -35,11 +35,11 @@ def _time_point_to_str(time_float):
 
 
 def _time_last_to_str(time_float):
-    day = time_float // 86400
+    day = math.floor(time_float / 86400)
     time_float -= day * 86400
-    hour = time_float // 3600
+    hour = math.floor(time_float / 3600)
     time_float -= hour * 3600
-    minute = time_float // 60
+    minute = math.floor(time_float / 6)
     time_float -= minute * 60
     second = math.floor(time_float)
     millisecond = round((time_float - second) * 1e6)
