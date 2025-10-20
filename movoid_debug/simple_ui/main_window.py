@@ -47,9 +47,11 @@ def create_new_dict_item(ori_dict, ori_key=None):
 
 class MainWindow(QMainWindow):
 
-    def __init__(self, flow):
+    def __init__(self, flow, app):
         super().__init__()
         self.flow = flow
+        self.app:QApplication = app
+        self.clipboard=self.app.clipboard()
         self.testing = False
         self.init_ui()
         self.show()
@@ -238,13 +240,23 @@ class MainWindow(QMainWindow):
                 child.setText(0, 'log')
                 child.setText(1, str(i[0]))
 
-    def click_flow_tree_item(self, current_item):
+    def click_flow_tree_item(self, current_item, column):
         current_func = getattr(current_item, '__func', None)
         self.refresh_arg_tree(current_func)
         self.refresh_return_tree(current_func)
         self.refresh_current_text()
+        if column <= 1:
+            self.clipboard.setText(current_func.func.__name__)
+        elif column == 2:
+            self.clipboard.setText(str(current_func.result(tostring=True)))
+        elif column == 3:
+            self.clipboard.setText(current_func.time_str_all_last)
+        elif column == 4:
+            self.clipboard.setText(current_func.time_str_start)
+        elif column == 5:
+            self.clipboard.setText(current_func.time_str_all_end)
 
-    def double_click_flow_tree_item(self, current_item):
+    def double_click_flow_tree_item(self, current_item, column):
         current_type = getattr(current_item, '__type', None)
         if current_type == 'web_pic':
             PixmapWindow.show_web_pixmap(getattr(current_item, '__value'))

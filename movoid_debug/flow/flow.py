@@ -175,7 +175,7 @@ class Flow:
         from ..simple_ui import MainApp, MainWindow
         if self.app is None:
             self.app = MainApp()
-        self.app.main = MainWindow(self)
+        self.app.main = MainWindow(self, self.app.app)
         self.app.exec()
         if self.raise_until_exit:
             return 1
@@ -308,7 +308,14 @@ class BasicFunction:
         :return: 函数的运行状态
         """
         if self.has_return:
-            re_value = f'return({type(self.re_value).__name__}): {self.re_value}' if tostring else self.re_value
+            if simple:
+                if tostring:
+                    str_value = str(self.re_value).split('\n')[0][:100]
+                    re_value = f'return({type(self.re_value).__name__}): {str_value}'
+                else:
+                    re_value = self.re_value
+            else:
+                re_value = f'return({type(self.re_value).__name__}): {self.re_value}' if tostring else self.re_value
         elif self.traceback:
             if simple:
                 re_value = f'{type(self.error).__name__}:{self.error}' if tostring else self.error
