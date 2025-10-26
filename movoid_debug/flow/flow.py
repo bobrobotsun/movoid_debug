@@ -174,8 +174,7 @@ class Flow:
         """
         from ..simple_ui import MainApp, MainWindow
         if self.app is None:
-            self.app = MainApp()
-        self.app.main = MainWindow(self, self.app.app)
+            self.app = MainApp(self)
         self.app.exec()
         if self.raise_until_exit:
             return 1

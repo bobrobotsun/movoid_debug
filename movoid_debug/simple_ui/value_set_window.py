@@ -9,11 +9,11 @@
 import traceback
 
 from PySide6.QtWidgets import QWidget, QGridLayout, QApplication, QRadioButton, QVBoxLayout, QTextEdit, QTreeWidget, QHBoxLayout, QPushButton, QMessageBox, QDialog, QTreeWidgetItem, QLabel
-
+from .basic import tree_item_can_expand, expand_tree_item_to_show_dir
 
 class KeySetWindow(QDialog):
-    def __init__(self, ori_dict: dict, ori_key: str):
-        super().__init__()
+    def __init__(self, ori_dict: dict, ori_key: str, parent=None):
+        super().__init__(parent=parent)
         self.ori_dict = ori_dict
         self.ori_key = str(ori_key)
         self.re_value = False
@@ -82,16 +82,16 @@ class KeySetWindow(QDialog):
         self.close()
 
     @classmethod
-    def get_value(cls, ori_dict: dict, ori_key: str):
-        temp = KeySetWindow(ori_dict, ori_key)
+    def get_value(cls, ori_dict: dict, ori_key: str, parent=None):
+        temp = KeySetWindow(ori_dict, ori_key, parent=parent)
         temp.show()
         temp.exec()
         return temp.re_value
 
 
 class ValueSetWindow(QDialog):
-    def __init__(self, ori_value):
-        super().__init__()
+    def __init__(self, ori_value, parent=None):
+        super().__init__(parent=parent)
         self.ori_value = ori_value
         self.get_value = lambda: ''
         self.re_value = self.ori_value
@@ -355,8 +355,8 @@ class ValueSetWindow(QDialog):
         return self.re_value
 
     @classmethod
-    def get_value(cls, ori_value):
-        temp = ValueSetWindow(ori_value)
+    def get_value(cls, ori_value, parent=None):
+        temp = ValueSetWindow(ori_value, parent=parent)
         temp.show()
         temp.exec()
         return temp.re_value
@@ -369,29 +369,3 @@ class ValueSetWindow(QDialog):
             3: lambda k, v: str(v),
         })
 
-
-def tree_item_can_expand(item):
-    value = getattr(item, '__tree_object')
-    if type(value) in (int, float, bool, str, list, dict) or value is None:
-        setattr(item, '__expand', False)
-    else:
-        temp = QTreeWidgetItem(item)
-        setattr(temp, '__delete', True)
-
-
-def expand_tree_item_to_show_dir(item: QTreeWidgetItem, show_dict: dict):
-    if getattr(item, '__expand', True):
-        for i in range(item.childCount() - 1, -1, -1):
-            tar_item = item.child(i)
-            if getattr(tar_item, '__delete'):
-                item.removeChild(tar_item)
-        value = getattr(item, '__tree_object')
-        for k in dir(value):
-            if not k.startswith('__'):
-                v = getattr(value, k)
-                if not callable(v):
-                    temp = QTreeWidgetItem(item)
-                    for k2, v2 in show_dict.items():
-                        temp.setText(int(k2), v2(k, v))
-                    setattr(temp, '__tree_object', v)
-                    tree_item_can_expand(temp)

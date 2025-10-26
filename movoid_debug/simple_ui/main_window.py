@@ -14,7 +14,9 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import QMainWindow, QApplication, QTreeWidget, QTextEdit, QVBoxLayout, QPushButton, QTreeWidgetItem, QHeaderView, QSplitter, QWidget, QDialog, QLabel
 
 from .flow_thread import FlowThread
-from .value_set_window import ValueSetWindow, KeySetWindow, tree_item_can_expand, expand_tree_item_to_show_dir
+from .frame_main import FrameMainWindow
+from .value_set_window import ValueSetWindow, KeySetWindow
+from .basic import BasicMainWindow, tree_item_can_expand, expand_tree_item_to_show_dir
 
 
 def create_new_dict_item(ori_dict, ori_key=None):
@@ -45,14 +47,15 @@ def create_new_dict_item(ori_dict, ori_key=None):
         ori_dict[real_key] = tar_value
 
 
-class MainWindow(QMainWindow):
+class MainWindow(BasicMainWindow):
 
     def __init__(self, flow, app):
         super().__init__()
         self.flow = flow
-        self.app:QApplication = app
-        self.clipboard=self.app.clipboard()
+        self.app = app
+        self.clipboard = self.app.app.clipboard()
         self.testing = False
+        self.children_dialog = []
         self.init_ui()
         self.show()
         self.refresh_ui()
@@ -172,7 +175,15 @@ class MainWindow(QMainWindow):
         copy_return_button.clicked.connect(lambda: self.action_copy_return())
         copy_return_button.setEnabled(False)
 
-        run_grid.addStretch(3)
+        run_grid.addStretch(1)
+
+        frame_window_button = QPushButton('打开调试台', run_widget)
+        frame_window_button.setObjectName('frame_window_button')
+        run_grid.addWidget(frame_window_button)
+        frame_window_button.clicked.connect(lambda: self.action_frame_window())
+        frame_window_button.setEnabled(True)
+
+        run_grid.addStretch(1)
 
         run_continue_button = QPushButton('忽略错误并return', run_widget)
         run_continue_button.setObjectName('run_continue_button')
@@ -410,7 +421,7 @@ class MainWindow(QMainWindow):
         func = getattr(arg_tree, '__func')
         kwarg_value = getattr(arg_tree, '__kwarg_value')
         current_value = getattr(current_item, '__value')
-        new_value = ValueSetWindow.get_value(current_value[-1])
+        new_value = ValueSetWindow.get_value(current_value[-1], parent=self)
         if new_value != current_value[-1]:
             temp = kwarg_value
             for i in current_value[:-2]:
@@ -422,7 +433,7 @@ class MainWindow(QMainWindow):
         if current_item.text(0) == 'current':
             return_tree: QTreeWidget = self.findChild(QTreeWidget, 'return_tree')  # noqa
             func = getattr(return_tree, '__func')
-            new_value = ValueSetWindow.get_value(self.flow.current_function.re_value)
+            new_value = ValueSetWindow.get_value(self.flow.current_function.re_value, parent=self)
             if new_value != self.flow.current_function.re_value:
                 self.flow.current_function.re_value = new_value
                 self.refresh_return_tree(func)
@@ -522,6 +533,9 @@ class MainWindow(QMainWindow):
         func = getattr(return_tree, '__func')
         self.flow.current_function.re_value = func.re_value
         self.refresh_return_tree(func)
+
+    def action_frame_window(self):
+        self.app.add_frame_window()
 
     @Slot(bool)
     def slot_test(self, start: bool):
