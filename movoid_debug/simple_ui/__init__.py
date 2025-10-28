@@ -18,13 +18,16 @@ class MainApp:
     def __init__(self, flow):
         self.app = QApplication()
         self.flow = flow
+        self.main = None
+        self.windows: List[QWidget] = []
+
+    def init(self):
         self.main = MainWindow(self.flow, self)
         self.main.signal_close.connect(self.action_close_main_window)
         self.windows: List[QWidget] = []
 
     def exec(self):
         re_value = self.app.exec()
-        print(re_value)
         return re_value
 
     def quit(self):

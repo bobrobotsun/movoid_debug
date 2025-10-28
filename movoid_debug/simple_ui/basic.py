@@ -9,9 +9,10 @@
 import time
 from datetime import datetime
 
+import requests
 from PySide6.QtCore import Signal, QSize, QRect
-from PySide6.QtGui import QPainter, QColor, Qt, QTextFormat
-from PySide6.QtWidgets import QMainWindow, QDialog, QTreeWidgetItem, QWidget, QTextEdit
+from PySide6.QtGui import QPainter, QColor, Qt, QTextFormat, QPixmap
+from PySide6.QtWidgets import QMainWindow, QDialog, QTreeWidgetItem, QWidget, QTextEdit, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QApplication
 
 
 class BasicMainWindow(QMainWindow):
@@ -24,6 +25,73 @@ class BasicMainWindow(QMainWindow):
 
 class BasicDialog(QDialog):
     pass
+
+
+class TextWindow(QDialog):
+    def __init__(self, text, parent=None):
+        super().__init__(parent=parent)
+        self.text = text
+        self.setWindowTitle('Show Text')
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QHBoxLayout(self)
+        self.setLayout(layout)
+        text_widget = QTextEdit(self)
+        text_widget.setObjectName("text_widget")
+        text_widget.setText(self.text)
+        layout.addWidget(text_widget)
+        button_area = QWidget(self)
+        button_area.setObjectName("button_area")
+        layout.addWidget(button_area)
+        button_layout = QVBoxLayout(button_area)
+        button_area.setLayout(button_layout)
+        button_copy_button = QPushButton("copy", button_area)
+        button_layout.addWidget(button_copy_button)
+        button_copy_button.clicked.connect(self.action_click_copy_button)
+        button_layout.addStretch()
+
+    def action_click_copy_button(self):
+        text_widget: QTextEdit = self.findChild(QTextEdit, "text_widget")
+        QApplication.instance().clipboard().setText(text_widget.toPlainText())
+
+    @classmethod
+    def show_text(cls, text, parent=None):
+        new_window = TextWindow(text, parent=parent)
+        new_window.show()
+
+
+class PixmapWindow(QDialog):
+    def __init__(self, pixmap: QPixmap, parent=None):
+        super().__init__(parent=parent)
+        self.pixmap = pixmap
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        label = QLabel()
+        layout.addWidget(label)
+        label.setPixmap(self.pixmap)
+        label.setScaledContents(True)
+        original_width = self.pixmap.width()
+        original_height = self.pixmap.height()
+        self.setGeometry(0, 0, original_width, original_height)
+
+    @classmethod
+    def show_web_pixmap(cls, url):
+        req = requests.get(url)
+        bit_pic = req.content
+        pixmap = QPixmap()
+        pixmap.loadFromData(bit_pic)
+        new_window = PixmapWindow(pixmap)
+        new_window.show()
+
+    @classmethod
+    def show_local_pixmap(cls, image_path):
+        pixmap = QPixmap(image_path)
+        new_window = PixmapWindow(pixmap)
+        new_window.show()
 
 
 def change_time_float_to_str(date_time: datetime, formmat="%Y-%m-%d %H:%M:%S.%f"):

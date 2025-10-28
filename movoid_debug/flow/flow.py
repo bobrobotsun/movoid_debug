@@ -103,15 +103,15 @@ class Flow:
         self.current_function.add_son(func)
         self.current_function = func
 
-    def print(self, *args, sep=' ', end='\n'):
+    def print(self, *args, sep=' ', end='\n', level='info'):
         """
         打印内容
         """
         text_list = [str(_) for _ in args]
         sep = str(sep)
         end = str(end)
-        print_text = sep.join(text_list) + end
-        self.current_function.add_son(print_text, '')
+        print_text = (sep.join(text_list) + end).strip('\n')
+        self.current_function.add_son(print_text, ('print', level))
 
     def web_pic(self, url):
         self.current_function.add_son(url, 'web_pic')
@@ -175,6 +175,7 @@ class Flow:
         from ..simple_ui import MainApp, MainWindow
         if self.app is None:
             self.app = MainApp(self)
+        self.app.init()
         self.app.exec()
         if self.raise_until_exit:
             return 1

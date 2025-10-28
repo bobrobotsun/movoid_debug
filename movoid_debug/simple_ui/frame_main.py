@@ -137,25 +137,6 @@ class FrameMainWindow(BasicMainWindow):
     def frame(self) -> FrameType:
         return self._frame_list[self._index]
 
-    def execute(self, script):
-        try:
-            re_value = eval(script, self.frame.f_globals, self.frame.f_locals)
-        except SyntaxError:
-            try:
-                exec(script, self.frame.f_globals, self.frame.f_locals)
-            except Exception as e:
-                self.execute_history.append([self._index, script, None, e, traceback.format_exc()])
-                return True
-            else:
-                self.execute_history.append([self._index, script, None, None, None])
-                return True
-        except Exception as e:
-            self.execute_history.append([self._index, script, None, e, traceback.format_exc()])
-            return True
-        else:
-            self.execute_history.append([self._index, script, re_value, None, None])
-            return True
-
     def init_ui(self):
         screen_rect = QApplication.primaryScreen().geometry()
         self.setGeometry(int(screen_rect.width() * 0), int(screen_rect.height() * 0), int(screen_rect.width() * 0.8), int(screen_rect.height() * 0.6))
@@ -361,9 +342,18 @@ class FrameMainWindow(BasicMainWindow):
                 tree_item_can_expand(local_var_item)
 
     def action_double_click_frame_tree_item(self, item: QTreeWidgetItem):
+        frame_tree: QTreeWidget = self.findChild(QTreeWidget, 'frame_tree')
+        item_is_top = True
+        while True:
+            if item.parent() is None:
+                break
+            else:
+                item = item.parent()
+                item_is_top = False
         self._index = item.data(0, Qt.UserRole)
         item.treeWidget().collapseAll()
-        item.setExpanded(False)
+        item.setExpanded(not item_is_top)
+        frame_tree.setCurrentItem(item)
         self.refresh_var_tree()
 
     def expand_global_var_tree_item_to_show_dir(self, item: QTreeWidgetItem):

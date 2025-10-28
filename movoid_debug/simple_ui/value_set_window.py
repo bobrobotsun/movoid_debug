@@ -85,7 +85,6 @@ class KeySetWindow(QDialog):
     def get_value(cls, ori_dict: dict, ori_key: str, parent=None):
         temp = KeySetWindow(ori_dict, ori_key, parent=parent)
         temp.show()
-        temp.exec()
         return temp.re_value
 
 
@@ -358,7 +357,6 @@ class ValueSetWindow(QDialog):
     def get_value(cls, ori_value, parent=None):
         temp = ValueSetWindow(ori_value, parent=parent)
         temp.show()
-        temp.exec()
         return temp.re_value
 
     @staticmethod

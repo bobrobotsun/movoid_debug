@@ -11,12 +11,12 @@ import re
 import requests
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QMainWindow, QApplication, QTreeWidget, QTextEdit, QVBoxLayout, QPushButton, QTreeWidgetItem, QHeaderView, QSplitter, QWidget, QDialog, QLabel
+from PySide6.QtWidgets import QMainWindow, QApplication, QTreeWidget, QTextEdit, QVBoxLayout, QPushButton, QTreeWidgetItem, QHeaderView, QSplitter, QWidget, QDialog, QLabel, QHBoxLayout
 
 from .flow_thread import FlowThread
 from .frame_main import FrameMainWindow
 from .value_set_window import ValueSetWindow, KeySetWindow
-from .basic import BasicMainWindow, tree_item_can_expand, expand_tree_item_to_show_dir
+from .basic import BasicMainWindow, tree_item_can_expand, expand_tree_item_to_show_dir, PixmapWindow, TextWindow
 
 
 def create_new_dict_item(ori_dict, ori_key=None):
@@ -53,7 +53,7 @@ class MainWindow(BasicMainWindow):
         super().__init__()
         self.flow = flow
         self.app = app
-        self.clipboard = self.app.app.clipboard()
+        self.clipboard = QApplication.instance().clipboard()
         self.testing = False
         self.children_dialog = []
         self.init_ui()
@@ -74,8 +74,8 @@ class MainWindow(BasicMainWindow):
         flow_tree_header = flow_tree.header()
         flow_tree_header.setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         flow_tree_header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
-        flow_tree.itemClicked.connect(self.click_flow_tree_item)
-        flow_tree.itemDoubleClicked.connect(self.double_click_flow_tree_item)
+        flow_tree.itemClicked.connect(self.action_click_flow_tree_item)
+        flow_tree.itemDoubleClicked.connect(self.action_double_click_flow_tree_item)
 
         error_text_splitter = QSplitter(Qt.Vertical, main_splitter)
         main_splitter.addWidget(error_text_splitter)
@@ -231,12 +231,13 @@ class MainWindow(BasicMainWindow):
                 child.setText(3, i[0].time_str_all_last)
                 child.setText(4, i[0].time_str_start)
                 child.setText(5, i[0].time_str_all_end)
-                setattr(child, '__func', i[0])
                 self.refresh_flow_tree_item(child, i[0])
                 if i[0] == select_func:
                     self.findChild(QTreeWidget, 'flow_tree').setCurrentItem(child)  # noqa
                     child.setExpanded(True)
                     self.refresh_arg_tree(i[0])
+                setattr(child, '__type', 'function')
+                setattr(child, '__value', i[0])
             elif i[1] == 'web_pic':
                 child.setText(0, 'web picture')
                 child.setText(1, str(i[0]))
@@ -247,34 +248,59 @@ class MainWindow(BasicMainWindow):
                 child.setText(1, str(i[0]))
                 setattr(child, '__type', 'local_pic')
                 setattr(child, '__value', str(i[0]))
-            else:
-                child.setText(0, 'log')
-                child.setText(1, str(i[0]))
+            elif isinstance(i[1], tuple):
+                if i[1][0] == 'print':
+                    child.setText(0, i[1][1])
+                    child.setText(1, str(i[0]))
+                    setattr(child, '__type', i[1])
+                    setattr(child, '__value', i[0])
 
-    def click_flow_tree_item(self, current_item, column):
-        current_func = getattr(current_item, '__func', None)
-        self.refresh_arg_tree(current_func)
-        self.refresh_return_tree(current_func)
-        self.refresh_current_text()
-        if column <= 1:
-            self.clipboard.setText(current_func.func.__name__)
-        elif column == 2:
-            self.clipboard.setText(str(current_func.result(tostring=True)))
-        elif column == 3:
-            self.clipboard.setText(current_func.time_str_all_last)
-        elif column == 4:
-            self.clipboard.setText(current_func.time_str_start)
-        elif column == 5:
-            self.clipboard.setText(current_func.time_str_all_end)
-
-    def double_click_flow_tree_item(self, current_item, column):
-        current_type = getattr(current_item, '__type', None)
-        if current_type == 'web_pic':
-            PixmapWindow.show_web_pixmap(getattr(current_item, '__value'))
-        if current_type == 'local_pic':
-            PixmapWindow.show_local_pixmap(getattr(current_item, '__value'))
+    def action_click_flow_tree_item(self, current_item, column):
+        flow_item_type = getattr(current_item, '__type', None)
+        flow_item_value = getattr(current_item, '__value', None)
+        if flow_item_type == 'function':
+            current_func = flow_item_value
+            self.refresh_arg_tree(current_func)
+            self.refresh_return_tree(current_func)
+            self.refresh_current_text()
+            if column <= 1:
+                self.clipboard.setText(current_func.func.__name__)
+            elif column == 2:
+                self.clipboard.setText(str(current_func.result(tostring=True)))
+            elif column == 3:
+                self.clipboard.setText(current_func.time_str_all_last)
+            elif column == 4:
+                self.clipboard.setText(current_func.time_str_start)
+            elif column == 5:
+                self.clipboard.setText(current_func.time_str_all_end)
         else:
-            self.click_flow_tree_item(current_item)
+            self.clipboard.setText(str(flow_item_value))
+
+    def action_double_click_flow_tree_item(self, current_item, column):
+        flow_item_type = getattr(current_item, '__type', None)
+        flow_item_value = getattr(current_item, '__value', None)
+        if flow_item_type == 'web_pic':
+            PixmapWindow.show_web_pixmap(getattr(current_item, '__value'))
+        elif flow_item_type == 'local_pic':
+            PixmapWindow.show_local_pixmap(getattr(current_item, '__value'))
+        elif flow_item_type == 'function':
+            if column <= 1:
+                text = flow_item_value.func.__name__
+            elif column == 2:
+                text = str(flow_item_value.result(tostring=True))
+            elif column == 3:
+                text = flow_item_value.time_str_all_last
+            elif column == 4:
+                text = flow_item_value.time_str_start
+            elif column == 5:
+                text = flow_item_value.time_str_all_end
+            else:
+                text = str(flow_item_value.result(tostring=True))
+            TextWindow.show_text(text, parent=self)
+        elif isinstance(flow_item_type, tuple):
+            if flow_item_type[0] == 'print':
+                text = flow_item_value
+                TextWindow.show_text(text, parent=self)
 
     def refresh_current_text(self):
         current_text: QTextEdit = self.findChild(QTextEdit, 'current_text')  # noqa
@@ -541,38 +567,3 @@ class MainWindow(BasicMainWindow):
     def slot_test(self, start: bool):
         self.testing = start
         self.refresh_ui()
-
-
-class PixmapWindow(QDialog):
-    def __init__(self, pixmap: QPixmap):
-        super().__init__()
-        self.pixmap = pixmap
-        self.init_ui()
-
-    def init_ui(self):
-        layout = QVBoxLayout()
-        self.setLayout(layout)
-        label = QLabel()
-        layout.addWidget(label)
-        label.setPixmap(self.pixmap)
-        label.setScaledContents(True)
-        original_width = self.pixmap.width()
-        original_height = self.pixmap.height()
-        self.setGeometry(0, 0, original_width, original_height)
-
-    @classmethod
-    def show_web_pixmap(cls, url):
-        req = requests.get(url)
-        bit_pic = req.content
-        pixmap = QPixmap()
-        pixmap.loadFromData(bit_pic)
-        new_window = PixmapWindow(pixmap)
-        new_window.show()
-        new_window.exec()
-
-    @classmethod
-    def show_local_pixmap(cls, image_path):
-        pixmap = QPixmap(image_path)
-        new_window = PixmapWindow(pixmap)
-        new_window.show()
-        new_window.exec()
