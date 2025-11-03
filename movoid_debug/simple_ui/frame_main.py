@@ -6,6 +6,7 @@
 # Time          : 2024/7/2 0:18
 # Description   : 
 """
+import builtins
 import inspect
 import pathlib
 import sys
@@ -18,8 +19,9 @@ from typing import List
 from PySide6.QtCore import Qt, Signal, QObject
 
 from PySide6.QtWidgets import QApplication, QSplitter, QTreeWidget, QTextEdit, QWidget, QTreeWidgetItem, QPushButton, QVBoxLayout, QCheckBox, QGroupBox
+from movoid_function import ReplaceFunction
 
-from .basic import tree_item_can_expand, expand_tree_item_to_show_dir, BasicMainWindow, change_time_float_to_str
+from .basic import tree_item_can_expand, expand_tree_item_to_show_dir, BasicMainWindow, change_time_float_to_str, CodeTextEdit
 
 
 class FrameStdout(QObject):
@@ -76,6 +78,8 @@ class FrameExecute(QObject):
         self.start_time = datetime.now()
         sys.stdout = self.stdout
         sys.stderr = self.stderr
+        if isinstance(builtins.print, ReplaceFunction):
+            builtins.print.multi_use_ori()
         self.signal_text_new.emit(self.start_time, 'script', self.script)
         try:
             re_value = eval(self.script, self.frame.f_globals, self.frame.f_locals)
@@ -92,6 +96,8 @@ class FrameExecute(QObject):
             self.traceback = traceback.format_exc()
         else:
             self.re_value = re_value
+        if isinstance(builtins.print, ReplaceFunction):
+            builtins.print.multi_use_last()
         sys.stdout = self.ori_stdout
         sys.stderr = self.ori_stderr
         self.end_time = datetime.now()
@@ -185,9 +191,10 @@ class FrameMainWindow(BasicMainWindow):
         terminal_splitter.addWidget(terminal_info_text)
         terminal_splitter.setStretchFactor(0, 1)
 
-        terminal_input_text = QTextEdit(terminal_splitter)
+        terminal_input_text = CodeTextEdit(terminal_splitter)
         terminal_input_text.setObjectName('terminal_input_text')
         terminal_splitter.addWidget(terminal_input_text)
+        terminal_input_text.signal_shift_enter.connect(self.action_click_terminal_button_enter)
         terminal_splitter.setStretchFactor(1, 1)
 
         terminal_button_area = QWidget(terminal_splitter)

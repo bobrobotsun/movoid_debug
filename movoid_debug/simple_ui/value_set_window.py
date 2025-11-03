@@ -11,6 +11,7 @@ import traceback
 from PySide6.QtWidgets import QWidget, QGridLayout, QApplication, QRadioButton, QVBoxLayout, QTextEdit, QTreeWidget, QHBoxLayout, QPushButton, QMessageBox, QDialog, QTreeWidgetItem, QLabel
 from .basic import tree_item_can_expand, expand_tree_item_to_show_dir
 
+
 class KeySetWindow(QDialog):
     def __init__(self, ori_dict: dict, ori_key: str, parent=None):
         super().__init__(parent=parent)
@@ -85,6 +86,7 @@ class KeySetWindow(QDialog):
     def get_value(cls, ori_dict: dict, ori_key: str, parent=None):
         temp = KeySetWindow(ori_dict, ori_key, parent=parent)
         temp.show()
+        temp.exec()
         return temp.re_value
 
 
@@ -357,6 +359,7 @@ class ValueSetWindow(QDialog):
     def get_value(cls, ori_value, parent=None):
         temp = ValueSetWindow(ori_value, parent=parent)
         temp.show()
+        temp.exec()
         return temp.re_value
 
     @staticmethod
@@ -366,4 +369,3 @@ class ValueSetWindow(QDialog):
             2: lambda k, v: type(v).__name__,
             3: lambda k, v: str(v),
         })
-

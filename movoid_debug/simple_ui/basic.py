@@ -129,6 +129,23 @@ def expand_tree_item_to_show_dir(item: QTreeWidgetItem, show_dict: dict, show_al
             temp.setText(0, 'no attribute')
 
 
+class CodeTextEdit(QTextEdit):
+    signal_shift_enter = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Tab:
+            # 插入4个空格代替默认制表符
+            self.insertPlainText("    ")
+            return  # 阻止默认处理
+        elif event.modifiers() == Qt.KeyboardModifier.ShiftModifier and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self.signal_shift_enter.emit()
+            return  # 阻止默认处理
+        super().keyPressEvent(event)
+
+
 class LineNumberArea(QWidget):
     def __init__(self, editor):
         super().__init__(editor)
