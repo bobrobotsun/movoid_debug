@@ -86,12 +86,14 @@ class PixmapWindow(QDialog):
         pixmap.loadFromData(bit_pic)
         new_window = PixmapWindow(pixmap)
         new_window.show()
+        new_window.exec()
 
     @classmethod
     def show_local_pixmap(cls, image_path):
         pixmap = QPixmap(image_path)
         new_window = PixmapWindow(pixmap)
         new_window.show()
+        new_window.exec()
 
 
 def change_time_float_to_str(date_time: datetime, formmat="%Y-%m-%d %H:%M:%S.%f"):
