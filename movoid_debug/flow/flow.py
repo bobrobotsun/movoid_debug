@@ -13,8 +13,9 @@ import sys
 import time
 import traceback
 
+import movoid_function
 from movoid_config import Config
-from movoid_function import wraps, analyse_args_value_from_function, wraps_ori, adapt_call
+from movoid_function import wraps, analyse_args_value_from_function, wraps_ori, adapt_call, STACK
 
 from enum import Enum
 
@@ -77,16 +78,24 @@ class Flow:
                 "default": TYPE_NO_UI,
                 "full": "debug",
                 "key": "debug",
+                'ini': ['debug', 'debug'],
             },
             'flag': {
                 "type": "int",
                 "default": FLAG_UI,
                 "key": "debug_flag",
+                'ini': ['debug', 'flag'],
             },
+            'ui_str_size': {
+                "type": "int",
+                "default": 40,
+                'ini': ['ui', 'str_size'],
+            }
         }, 'movoid_debug.ini', False)
+        self.app = None
+        self._debug_type = 0
         self.debug_type = self.config.debug
         self.debug_flag = self.config.flag
-        self.app = None
         self.continue_error_list = []
 
     @property
@@ -98,6 +107,29 @@ class Flow:
         if value < 0:
             self._raise_error = 0
         self._raise_error = value
+
+    @property
+    def debug_type(self):
+        return self._debug_type
+
+    @debug_type.setter
+    def debug_type(self, value):
+        self._debug_type = value
+
+    def return_str_in_size(self, ori_str):
+        ori_str = str(ori_str)
+        ori_lines = ori_str.split('\n')
+        ori_first_line_str = ori_lines[0]
+        if self.config.ui_str_size <= 0:
+            re_str = ori_first_line_str
+        elif self.config.ui_str_size > len(ori_first_line_str):
+            if len(ori_lines) == 1:
+                re_str = ori_first_line_str
+            else:
+                re_str = ori_first_line_str + f'...({len(ori_lines) - 1}line{len(ori_str) - len(ori_first_line_str)}char)'
+        else:
+            re_str = ori_first_line_str[:self.config.ui_str_size] + f'...({len(ori_lines)}line{len(ori_str) - 40}char)'
+        return re_str
 
     def set_current_function(self, func):
         self.current_function.add_son(func)
@@ -172,11 +204,11 @@ class Flow:
         """
         调出一个debug窗口来进行debug，编辑请前往main_window.py进行
         """
-        from ..simple_ui import MainApp, MainWindow
-        if self.app is None:
+        if self._debug_type == TYPE_UI and self.app is None:
+            from ..simple_ui import MainApp
             self.app = MainApp(self)
-        self.app.init()
-        self.app.exec()
+        self.app.when_error()
+        self.app.when_error_end()
         if self.raise_until_exit:
             return 1
         return 2 if self.raise_error == 0 else 1
@@ -191,12 +223,12 @@ class Flow:
         :return: 返回具体的flag
         """
         debug_flag = [default_flag, *debug_flag]
-        ind = self.debug_type
+        ind = self._debug_type
         tar_ind_flag = debug_flag[ind] if len(debug_flag) > ind else None
         tar_flag = debug_flag[0] if tar_ind_flag is None else tar_ind_flag
         flag = self.debug_flag if tar_flag is None else tar_flag
         flag = max(0, min(2, flag))
-        if self.debug_type == 0:  # 如果是标准运行逻辑，那么不可以调用UI
+        if self._debug_type == TYPE_NO_UI:  # 如果是标准运行逻辑，那么不可以调用UI
             flag = max(1, flag)
         return flag
 
@@ -310,7 +342,7 @@ class BasicFunction:
         if self.has_return:
             if simple:
                 if tostring:
-                    str_value = str(self.re_value).split('\n')[0][:100]
+                    str_value = self.flow.return_str_in_size(self.re_value)
                     re_value = f'return({type(self.re_value).__name__}): {str_value}'
                 else:
                     re_value = self.re_value
@@ -665,3 +697,11 @@ def teardown(func):
         pass
 
     return wrapper
+
+
+STACK.this_file_lineno_should_ignore(416, check_text='return test(*args, **kwargs, _debug_default=debug_default, _debug_debug=debug_debug, _force_raise=force_raise)')
+STACK.this_file_lineno_should_ignore(426, check_text='re_value = self.func(*self.args, **self.kwargs)')
+STACK.this_file_lineno_should_ignore(485, check_text='return self.ori(*args, _debug_default=debug_default, _debug_debug=debug_debug, _force_raise=force_raise, **kwargs)')
+STACK.this_file_lineno_should_ignore(495, check_text='re_value = self.func(*args, **kwargs)')
+STACK.this_file_lineno_should_ignore(589, check_text='re_value = temp(*args, **kwargs)')
+STACK.this_file_lineno_should_ignore(None, ignore_level=movoid_function.stack.DEBUG)

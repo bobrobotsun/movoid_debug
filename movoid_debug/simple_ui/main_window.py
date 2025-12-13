@@ -8,13 +8,10 @@
 """
 import re
 
-import requests
 from PySide6.QtCore import Qt, Slot
-from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QMainWindow, QApplication, QTreeWidget, QTextEdit, QVBoxLayout, QPushButton, QTreeWidgetItem, QHeaderView, QSplitter, QWidget, QDialog, QLabel, QHBoxLayout
+from PySide6.QtWidgets import QMainWindow, QApplication, QTreeWidget, QTextEdit, QVBoxLayout, QPushButton, QTreeWidgetItem, QHeaderView, QSplitter, QWidget, QDialog, QLabel, QHBoxLayout, QSystemTrayIcon
 
 from .flow_thread import FlowThread
-from .frame_main import FrameMainWindow
 from .value_set_window import ValueSetWindow, KeySetWindow
 from .basic import BasicMainWindow, tree_item_can_expand, expand_tree_item_to_show_dir, PixmapWindow, TextWindow
 
@@ -240,18 +237,18 @@ class MainWindow(BasicMainWindow):
                 setattr(child, '__value', i[0])
             elif i[1] == 'web_pic':
                 child.setText(0, 'web picture')
-                child.setText(1, str(i[0]))
+                child.setText(1, self.flow.return_str_in_size(i[0]))
                 setattr(child, '__type', 'web_pic')
                 setattr(child, '__value', str(i[0]))
             elif i[1] == 'local_pic':
                 child.setText(0, 'local picture')
-                child.setText(1, str(i[0]))
+                child.setText(1, self.flow.return_str_in_size(i[0]))
                 setattr(child, '__type', 'local_pic')
                 setattr(child, '__value', str(i[0]))
             elif isinstance(i[1], tuple):
                 if i[1][0] == 'print':
                     child.setText(0, i[1][1])
-                    child.setText(1, str(i[0]))
+                    child.setText(1, self.flow.return_str_in_size(i[0]))
                     setattr(child, '__type', i[1])
                     setattr(child, '__value', i[0])
 

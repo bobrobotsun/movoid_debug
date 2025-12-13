@@ -8,7 +8,9 @@
 """
 from typing import List
 
+import movoid_function
 from PySide6.QtWidgets import QApplication, QWidget
+from movoid_function import STACK
 
 from .main_window import MainWindow
 from .frame_main import FrameMainWindow
@@ -21,14 +23,13 @@ class MainApp:
         self.main = None
         self.windows: List[QWidget] = []
 
-    def init(self):
+    def when_error(self):
         self.main = MainWindow(self.flow, self)
         self.main.signal_close.connect(self.action_close_main_window)
         self.windows: List[QWidget] = []
 
-    def exec(self):
-        re_value = self.app.exec()
-        return re_value
+    def when_error_end(self):
+        self.app.exec()
 
     def quit(self):
         return self.app.quit()
@@ -38,10 +39,13 @@ class MainApp:
             window.close()
 
     def add_frame_window(self):
-        frame = FrameMainWindow(self.flow, 3)
+        frame = FrameMainWindow(self.flow, 0)
         self.windows.append(frame)
         frame.signal_close.connect(self.action_close_frame_window)
 
     def action_close_frame_window(self, sender):
         if sender in self.windows:
             self.windows.remove(sender)
+
+
+STACK.this_file_lineno_should_ignore(None, ignore_level=movoid_function.stack.UI)

@@ -6,7 +6,6 @@
 # Time          : 2025/10/22 10:30
 # Description   : 
 """
-import time
 from datetime import datetime
 
 import requests
@@ -35,6 +34,8 @@ class TextWindow(QDialog):
         self.init_ui()
 
     def init_ui(self):
+        screen_rect = QApplication.primaryScreen().geometry()
+        self.setGeometry(int(screen_rect.width() * 0.2), int(screen_rect.height() * 0.2), int(screen_rect.width() * 0.6), int(screen_rect.height() * 0.6))
         layout = QHBoxLayout(self)
         self.setLayout(layout)
         text_widget = QTextEdit(self)

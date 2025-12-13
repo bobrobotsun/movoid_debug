@@ -10,16 +10,15 @@ import builtins
 import inspect
 import pathlib
 import sys
-import time
 import traceback
 from datetime import datetime
 from types import FrameType
-from typing import List
+from typing import List, Union, Tuple
 
 from PySide6.QtCore import Qt, Signal, QObject
 
 from PySide6.QtWidgets import QApplication, QSplitter, QTreeWidget, QTextEdit, QWidget, QTreeWidgetItem, QPushButton, QVBoxLayout, QCheckBox, QGroupBox
-from movoid_function import ReplaceFunction
+from movoid_function import ReplaceFunction, STACK, stack, StackFrame
 
 from .basic import tree_item_can_expand, expand_tree_item_to_show_dir, BasicMainWindow, change_time_float_to_str, CodeTextEdit
 
@@ -114,23 +113,25 @@ class FrameExecute(QObject):
 
 class FrameMainWindow(BasicMainWindow):
 
-    def __init__(self, flow, _stack_leve=None, parent=None):
+    def __init__(self, flow, _stack_level=None, parent=None):
         super().__init__(parent=parent)
         self.flow = flow
-        _stack_leve = (0 if _stack_leve is None else int(_stack_leve)) + 4
+        _stack_level = (0 if _stack_level is None else int(_stack_level))
         _frame: FrameType = inspect.currentframe()
-        self._frame_list: List[FrameType] = []
+        self._frame_list_ignore: List[Tuple[StackFrame, int]] = STACK.get_frame_list(
+            stacklevel=_stack_level,
+            init_ignore_level=stack.DEBUG,
+            skip_ignore_level=stack.DECORATOR,
+            with_stack_level=True)
+        self._frame_list_all: List[Tuple[StackFrame, int]] = STACK.get_frame_list(
+            stacklevel=_stack_level,
+            init_ignore_level=stack.DEBUG,
+            skip_ignore_level=stack.NO_SKIP,
+            with_stack_level=True)
+        print(self._frame_list_all)
+        print(self._frame_list_ignore)
+        self._frame_list: List[Tuple[StackFrame, int]] = self._frame_list_all
         self._index = 0
-        for _s in range(_stack_leve):
-            _frame = _frame.f_back
-        if _frame is None:
-            raise ValueError(f'stack level {_stack_leve} has no frame.')
-        while True:
-            if _frame is None:
-                break
-            else:
-                self._frame_list.append(_frame)
-                _frame = _frame.f_back
         self._execute_list: List[FrameExecute] = []
         self._current_execute = False
 
@@ -141,7 +142,11 @@ class FrameMainWindow(BasicMainWindow):
 
     @property
     def frame(self) -> FrameType:
-        return self._frame_list[self._index]
+        return self._frame_list[self._index][0].frame
+
+    @property
+    def frame_index(self) -> int:
+        return self._frame_list[self._index][1]
 
     def init_ui(self):
         screen_rect = QApplication.primaryScreen().geometry()
@@ -159,10 +164,9 @@ class FrameMainWindow(BasicMainWindow):
         # 切换frame是否全部显示
         frame_wrap_switch = QCheckBox('show wrap frame')
         frame_wrap_switch.setObjectName('frame_wrap_switch')
-        # frame_layout.addWidget(frame_wrap_switch)
+        frame_layout.addWidget(frame_wrap_switch)
         frame_wrap_switch.setChecked(False)
-        frame_wrap_switch.setToolTip('关闭后会隐藏因为debug而产生的frame')
-        # frame_wrap_switch.setToolTip('关闭后会隐藏因为debug和movoid_function.wraps而产生的frame')
+        frame_wrap_switch.setToolTip('关闭后会隐藏因为装饰器而产生的frame')
         frame_wrap_switch.stateChanged.connect(self.refresh_frame_tree)
 
         frame_tree = QTreeWidget(frame_area)
@@ -250,35 +254,27 @@ class FrameMainWindow(BasicMainWindow):
     def refresh_frame_tree(self):
         frame_tree: QTreeWidget = self.findChild(QTreeWidget, 'frame_tree')
         frame_wrap_switch: QCheckBox = self.findChild(QCheckBox, 'frame_wrap_switch')
-        # frame_wrap_switch_state = frame_wrap_switch.isChecked()
+        frame_wrap_switch_state = frame_wrap_switch.isChecked()
+        frame_index = self.frame_index
+        if frame_wrap_switch_state:
+            self._frame_list = self._frame_list_all
+        else:
+            self._frame_list = self._frame_list_ignore
         frame_tree.clear()
         main_file_path = pathlib.Path(sys.argv[0]).parent
-        main_frame_item = QTreeWidgetItem(frame_tree, [f'{main_file_path}'])
-        frame_tree.addTopLevelItem(main_frame_item)
-        for _index, _frame in enumerate(self._frame_list):
-            # if not frame_wrap_switch_state:
-            #     _self = _frame.f_locals.get('self', None)
-            #     _self_module = _frame.f_globals.get('__name__', None)
-            #     codes = _frame.f_code
-            #     print(type(codes))
-            #     print(_index, _self, _self_module, _frame.f_lineno, _frame.f_code, _frame.f_code.co_filename)
-            #     # if _self_module is None:
-            #     #     continue
-            #     if _self is not None and hasattr(_self, '__class__'):
-            #         _self_class = getattr(_self, '__class__')
-            #         if hasattr(_self_class, '__name__'):
-            #             if _self_module == 'movoid_debug.flow.flow' and _self_class.__name__ in ('FlowFunction', 'TestFunction'):
-            #                 continue
+        frame_selected = True
+        for _list_index, _frame_list in enumerate(self._frame_list):
+            _stack_frame, _frame_index = _frame_list
+            _frame=_stack_frame.frame
             frame_file_path = pathlib.Path(_frame.f_code.co_filename)
             frame_code_lines, frame_code_lineno = inspect.getsourcelines(_frame.f_code)
             frame_code_text = ''.join(frame_code_lines).strip('\n')
-
-            frame_item = QTreeWidgetItem(frame_tree, [f'{_index} {_frame.f_code.co_name} {frame_file_path.name}:{_frame.f_lineno}'])
+            frame_item = QTreeWidgetItem(frame_tree, [f'{_frame_index} {_stack_frame.info()}'])
             frame_tree.addTopLevelItem(frame_item)
-            frame_item.setData(0, Qt.UserRole, _index)
-            if _index == self._index:
-                frame_tree.setCurrentItem(frame_item)
-                print(frame_tree.currentItem())
+            frame_item.setData(0, Qt.UserRole, _list_index)
+            if frame_selected and _frame_index >= frame_index:
+                self._index = _list_index
+                frame_selected = False
             try:
                 frame_file_path_relative = frame_file_path.relative_to(main_file_path)
             except ValueError:
@@ -289,8 +285,10 @@ class FrameMainWindow(BasicMainWindow):
                 frame_item.addChild(frame_item_file)
             frame_item_code = QTreeWidgetItem(frame_item, [f'{frame_code_text}'])
             frame_item.addChild(frame_item_code)
-        # select = frame_tree.takeTopLevelItem(self._index)
-        # frame_tree.setCurrentItem(select)
+        if frame_selected:
+            self._index = len(self._frame_list) - 1
+        select = frame_tree.topLevelItem(self._index)
+        frame_tree.setCurrentItem(select)
         self.refresh_var_tree()
 
     def refresh_history_tree(self):
