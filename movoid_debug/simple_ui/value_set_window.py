@@ -95,9 +95,17 @@ class ValueSetWindow(QDialog):
     def __init__(self, ori_value, parent=None):
         super().__init__(parent=parent)
         self.ori_value = ori_value
-        self.get_value = lambda: ''
         self.re_value = self.ori_value
         self.args = []
+        self.select_type = ''
+        self.temp_input = {
+            'str': '',
+            'int': '',
+            'float': '',
+            'list': '',
+            'dict': '',
+            'eval': '',
+        }
         self.init_ui()
         self.init_ori_value()
 
@@ -178,11 +186,17 @@ class ValueSetWindow(QDialog):
         none_radio.setText('None')
         none_radio.clicked.connect(lambda: self.radio_choose_none())
 
-        object_radio = QRadioButton(type_widget)
-        object_radio.setObjectName('object_radio')
-        type_grid.addWidget(object_radio, 0)
-        object_radio.setText('object')
-        object_radio.clicked.connect(lambda: self.radio_choose_object())
+        global_local_radio = QRadioButton(type_widget)
+        global_local_radio.setObjectName('global_local_radio')
+        type_grid.addWidget(global_local_radio, 0)
+        global_local_radio.setText('global & local')
+        global_local_radio.clicked.connect(lambda: self.radio_choose_global_local())
+
+        eval_radio = QRadioButton(type_widget)
+        eval_radio.setObjectName('eval_radio')
+        type_grid.addWidget(eval_radio, 0)
+        eval_radio.setText('eval_object')
+        eval_radio.clicked.connect(lambda: self.radio_choose_eval())
 
         type_grid.addStretch(1)
 
@@ -204,78 +218,115 @@ class ValueSetWindow(QDialog):
         end_cancel.clicked.connect(lambda: self.end_cancel())
 
     def init_ori_value(self):
-        ori_type = type(self.ori_value)
-        if ori_type is int:
-            self.radio_choose_int(self.ori_value)
-        elif ori_type is float:
-            self.radio_choose_float(self.ori_value)
-        elif ori_type is str:
-            self.radio_choose_str(self.ori_value)
-        elif ori_type in (list, tuple, set):
-            self.radio_choose_list(self.ori_value)
-        elif ori_type is dict:
-            self.radio_choose_dict(self.ori_value)
+        self.ori_type = type(self.ori_value)
+        self.temp_input['eval'] = repr(self.ori_value)
+        if self.ori_type is int:
+            self.temp_input['int'] = str(self.ori_value)
+            self.radio_choose_int()
+        elif self.ori_type is float:
+            self.temp_input['float'] = str(self.ori_value)
+            self.radio_choose_float()
+        elif self.ori_type is str:
+            self.temp_input['str'] = str(self.ori_value)
+            self.radio_choose_str()
+        elif self.ori_type is list:
+            self.temp_input['list'] = str(self.ori_value)
+            self.radio_choose_list()
+        elif self.ori_type is dict:
+            self.temp_input['dict'] = str(self.ori_value)
+            self.radio_choose_dict()
         elif self.ori_value is None:
             self.radio_choose_none()
         else:
-            self.args.append(self.ori_value)
-            self.radio_choose_object()
+            self.radio_choose_eval()
 
-    def radio_choose_int(self, init_text=None):
-        self.get_value = self._get_int
-        self.input_text_show(init_text=init_text)
+    def radio_choose_setup(self):
+        input_text: QTextEdit = self.findChild(QTextEdit, 'input_text')  # noqa
+        input_str = input_text.toPlainText()
+        if self.select_type == 'int':
+            self.temp_input['int'] = input_str
+        elif self.select_type == 'float':
+            self.temp_input['float'] = input_str
+        elif self.select_type == 'str':
+            self.temp_input['str'] = input_str
+        elif self.select_type == 'list':
+            self.temp_input['list'] = input_str
+        elif self.select_type == 'dict':
+            self.temp_input['dict'] = input_str
+        elif self.select_type == 'eval':
+            self.temp_input['eval'] = input_str
+
+    def radio_choose_int(self):
+        self.radio_choose_setup()
+        self.select_type = 'int'
+        self.input_text_show()
         radio: QRadioButton = self.findChild(QRadioButton, 'int_radio')  # noqa
         radio.setChecked(True)
 
-    def radio_choose_float(self, init_text=None):
-        self.get_value = self._get_float
-        self.input_text_show(init_text=init_text)
+    def radio_choose_float(self):
+        self.radio_choose_setup()
+        self.select_type = 'float'
+        self.input_text_show()
         radio: QRadioButton = self.findChild(QRadioButton, 'float_radio')  # noqa
         radio.setChecked(True)
 
-    def radio_choose_str(self, init_text=None):
-        self.get_value = self._get_str
-        self.input_text_show(init_text=init_text)
+    def radio_choose_str(self):
+        self.radio_choose_setup()
+        self.select_type = 'str'
+        self.input_text_show()
         radio: QRadioButton = self.findChild(QRadioButton, 'str_radio')  # noqa
         radio.setChecked(True)
 
-    def radio_choose_list(self, init_text=None):
-        self.get_value = self._get_list
-        self.input_text_show(init_text=init_text)
+    def radio_choose_list(self):
+        self.radio_choose_setup()
+        self.select_type = 'list'
+        self.input_text_show()
         radio: QRadioButton = self.findChild(QRadioButton, 'list_radio')  # noqa
         radio.setChecked(True)
 
-    def radio_choose_dict(self, init_text=None):
-        self.get_value = self._get_dict
-        self.input_text_show(init_text=init_text)
+    def radio_choose_dict(self):
+        self.radio_choose_setup()
+        self.select_type = 'dict'
+        self.input_text_show()
         radio: QRadioButton = self.findChild(QRadioButton, 'dict_radio')  # noqa
         radio.setChecked(True)
 
     def radio_choose_true(self):
-        self.get_value = lambda: True
+        self.radio_choose_setup()
+        self.select_type = 'true'
         self.input_text_show('')
         radio: QRadioButton = self.findChild(QRadioButton, 'true_radio')  # noqa
         radio.setChecked(True)
 
     def radio_choose_false(self):
-        self.get_value = lambda: False
+        self.radio_choose_setup()
+        self.select_type = 'false'
         self.input_text_show('')
         radio: QRadioButton = self.findChild(QRadioButton, 'false_radio')  # noqa
         radio.setChecked(True)
 
     def radio_choose_none(self):
-        self.get_value = lambda: None
+        self.radio_choose_setup()
+        self.select_type = 'none'
         self.input_text_show('')
         radio: QRadioButton = self.findChild(QRadioButton, 'none_radio')  # noqa
         radio.setChecked(True)
 
-    def radio_choose_object(self):
-        self.get_value = self._get_object
+    def radio_choose_global_local(self):
+        self.radio_choose_setup()
+        self.select_type = 'global_local'
         self.input_text_show('arg_tree')
-        radio: QRadioButton = self.findChild(QRadioButton, 'object_radio')  # noqa
+        radio: QRadioButton = self.findChild(QRadioButton, 'global_local_radio')  # noqa
         radio.setChecked(True)
 
-    def input_text_show(self, object_name='input_text', init_text=None):
+    def radio_choose_eval(self):
+        self.radio_choose_setup()
+        self.select_type = 'eval'
+        self.input_text_show()
+        radio: QRadioButton = self.findChild(QRadioButton, 'eval_radio')  # noqa
+        radio.setChecked(True)
+
+    def input_text_show(self, object_name='input_text'):
         arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')  # noqa
         arg_tree.setVisible(False)
         input_text: QTextEdit = self.findChild(QTextEdit, 'input_text')  # noqa
@@ -283,8 +334,7 @@ class ValueSetWindow(QDialog):
         if object_name == 'input_text':
             input_text.setVisible(True)
             input_text.clear()
-            if init_text:
-                input_text.setText(str(init_text))
+            input_text.setText(self.temp_input.get(self.select_type, ''))
         elif object_name == 'arg_tree':
             arg_tree.setVisible(True)
             self.refresh_arg_tree()
@@ -292,16 +342,16 @@ class ValueSetWindow(QDialog):
     def refresh_arg_tree(self):
         arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')  # noqa
         arg_tree.clear()
-        global_value = globals()
-        for i in self.args:
-            temp = QTreeWidgetItem(arg_tree)
-            temp.setText(0, 'ori')
-            temp.setText(2, type(i).__name__)
-            temp.setText(3, str(i))
-            setattr(temp, '__tree_object', i)
-            arg_tree.setCurrentItem(temp)
-            tree_item_can_expand(temp)
-        for k, v in global_value.items():
+        global_value = self.parent().flow.error_frame.frame.f_globals
+        local_value = self.parent().flow.error_frame.frame.f_locals
+        temp = QTreeWidgetItem(arg_tree)
+        temp.setText(0, 'ori')
+        temp.setText(2, type(self.ori_value).__name__)
+        temp.setText(3, str(self.ori_value))
+        setattr(temp, '__tree_object', self.ori_value)
+        arg_tree.setCurrentItem(temp)
+        tree_item_can_expand(temp)
+        for k, v in {**global_value, **local_value}.items():
             if not k.startswith('__'):
                 temp = QTreeWidgetItem(arg_tree)
                 temp.setText(1, str(k))
@@ -312,7 +362,7 @@ class ValueSetWindow(QDialog):
 
     def end_ok(self):
         try:
-            self.re_value = self.get_value()
+            self.re_value = self.get_return()
         except Exception:
             QMessageBox.critical(self, '获取值错误!', traceback.format_exc())
         else:
@@ -322,39 +372,32 @@ class ValueSetWindow(QDialog):
         self.re_value = self.ori_value
         self.done(1)
 
-    def _get_int(self):
-        input_text: QTextEdit = self.findChild(QTextEdit, 'input_text')  # noqa
-        re_value = int(input_text.toPlainText())
-        return re_value
-
-    def _get_float(self):
-        input_text: QTextEdit = self.findChild(QTextEdit, 'input_text')  # noqa
-        re_value = float(input_text.toPlainText())
-        return re_value
-
-    def _get_str(self):
-        input_text: QTextEdit = self.findChild(QTextEdit, 'input_text')  # noqa
-        re_value = str(input_text.toPlainText())
-        return re_value
-
-    def _get_list(self):
-        input_text: QTextEdit = self.findChild(QTextEdit, 'input_text')  # noqa
-        re_value = list(eval(input_text.toPlainText()))
-        return re_value
-
-    def _get_dict(self):
-        input_text: QTextEdit = self.findChild(QTextEdit, 'input_text')  # noqa
-        re_value = dict(eval(input_text.toPlainText()))
-        return re_value
-
-    def _get_object(self):
-        arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')  # noqa
-        tar_arg = arg_tree.currentItem()
-        return getattr(tar_arg, '__tree_object')
-
-    def get_re_value(self):
-        print('func', self, self.re_value)
-        return self.re_value
+    def get_return(self):
+        self.radio_choose_setup()
+        if self.select_type == 'int':
+            return int(self.temp_input['int'])
+        elif self.select_type == 'float':
+            return float(self.temp_input['float'])
+        elif self.select_type == 'str':
+            return str(self.temp_input['str'])
+        elif self.select_type == 'list':
+            return list(eval(self.temp_input['list'], self.parent().flow.error_frame.frame.f_globals, self.parent().flow.error_frame.frame.f_locals))
+        elif self.select_type == 'dict':
+            return dict(eval(self.temp_input['dict'], self.parent().flow.error_frame.frame.f_globals, self.parent().flow.error_frame.frame.f_locals))
+        elif self.select_type == 'eval':
+            return eval(self.temp_input['eval'], self.parent().flow.error_frame.frame.f_globals, self.parent().flow.error_frame.frame.f_locals)
+        elif self.select_type == 'none':
+            return None
+        elif self.select_type == 'true':
+            return True
+        elif self.select_type == 'false':
+            return False
+        elif self.select_type == 'global_local':
+            arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')  # noqa
+            tar_arg = arg_tree.currentItem()
+            return getattr(tar_arg, '__tree_object')
+        else:
+            raise Exception(f'error select type:{self.select_type}')
 
     @classmethod
     def get_value(cls, ori_value, parent=None):

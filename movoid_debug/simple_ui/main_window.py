@@ -6,6 +6,7 @@
 # Time          : 2024/6/2 21:48
 # Description   : 
 """
+import inspect
 import re
 
 from PySide6.QtCore import Qt, Slot
@@ -247,7 +248,7 @@ class MainWindow(BasicMainWindow):
                 setattr(child, '__value', str(i[0]))
             elif isinstance(i[1], tuple):
                 if i[1][0] == 'print':
-                    child.setText(0, i[1][1])
+                    child.setText(0, f'{i[1][1].str} {i[1][1].int}')
                     child.setText(1, self.flow.return_str_in_size(i[0]))
                     setattr(child, '__type', i[1])
                     setattr(child, '__value', i[0])
@@ -395,10 +396,11 @@ class MainWindow(BasicMainWindow):
         setattr(arg_tree, '__current_value', [current_value[0], current_value[-2]])
 
     def refresh_global_tree(self):
-        global_value = globals()
+        global_value = self.flow.error_frame.frame.f_globals
+        local_value = self.flow.error_frame.frame.f_locals
         global_tree: QTreeWidget = self.findChild(QTreeWidget, 'global_tree')  # noqa
         global_tree.clear()
-        for k, v in global_value.items():
+        for k, v in {**global_value, **local_value}.items():
             if not k.startswith('__'):
                 temp = QTreeWidgetItem(global_tree)
                 temp.setText(0, k)
@@ -409,7 +411,12 @@ class MainWindow(BasicMainWindow):
 
     def refresh_function_code(self):
         function_code: QTextEdit = self.findChild(QTextEdit, 'function_code')  # noqa
-        function_code.setText(''.join(self.flow.final_lines))
+        try:
+            lines, first_line = inspect.getsourcelines(self.flow.error_frame.frame.f_code)
+            code_str = ''.join(lines)
+        except:
+            code_str = ''
+        function_code.setText(code_str)
 
     def run_test(self):
         arg_tree: QTreeWidget = self.findChild(QTreeWidget, 'arg_tree')  # noqa

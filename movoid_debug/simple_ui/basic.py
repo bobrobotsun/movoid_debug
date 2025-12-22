@@ -134,19 +134,81 @@ def expand_tree_item_to_show_dir(item: QTreeWidgetItem, show_dict: dict, show_al
 
 class CodeTextEdit(QTextEdit):
     signal_shift_enter = Signal()
+    space_count = 4
+    space_all = ' ' * space_count
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Tab:
-            # 插入4个空格代替默认制表符
-            self.insertPlainText("    ")
-            return  # 阻止默认处理
-        elif event.modifiers() == Qt.KeyboardModifier.ShiftModifier and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
-            self.signal_shift_enter.emit()
-            return  # 阻止默认处理
-        super().keyPressEvent(event)
+            cursor = self.textCursor()
+            # 场景1：有多行选中
+            if cursor.hasSelection():
+                # 获取选中的起始行和结束行
+                event.accept()
+                document = self.document()
+                start_block = document.findBlock(cursor.selectionStart())
+                end_block = document.findBlock(cursor.selectionEnd())
+                current_block = start_block
+                # 批量为每一行添加空格
+                document.begin()  # 批量编辑，优化性能
+                try:
+                    while True:
+                        # 定位行首并插入空格
+                        block_cursor = self.textCursor()
+                        block_cursor.setPosition(current_block.position())
+                        block_cursor.insertText(" " * 4)
+
+                        # 终止条件：遍历到结束行
+                        if current_block == end_block:
+                            break
+                        current_block = current_block.next()
+                finally:
+                    document.end()
+            else:
+                self.insertPlainText(self.space_all)
+        elif event.key() == Qt.Key.Key_Backtab:
+            cursor = self.textCursor()
+            # 场景1：有多行选中
+            # 获取选中的起始行和结束行
+            event.accept()
+            document = self.document()
+            start_block = document.findBlock(cursor.selectionStart())
+            end_block = document.findBlock(cursor.selectionEnd())
+            current_block = start_block
+            # 批量为每一行添加空格
+            document.begin()  # 批量编辑，优化性能
+            try:
+                while True:
+                    # 定位行首并插入空格
+                    block_cursor = self.textCursor()
+                    text = current_block.text()
+                    space_count = 0
+                    block_cursor.setPosition(current_block.position())
+                    for i in range(self.space_count):
+                        if text.startswith(' '):
+                            text = text[1:]
+                            space_count += 1
+                        else:
+                            break
+                    block_cursor.setPosition(current_block.position() + space_count, block_cursor.MoveMode.KeepAnchor)
+                    block_cursor.removeSelectedText()
+
+                    # 终止条件：遍历到结束行
+                    if current_block == end_block:
+                        break
+                    current_block = current_block.next()
+            finally:
+                document.end()
+        elif event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if event.modifiers() == Qt.KeyboardModifier.ShiftModifier:
+                self.signal_shift_enter.emit()
+            else:
+                self.insertPlainText('\n')
+        else:
+            super().keyPressEvent(event)
+        return  # 阻止默认处理
 
 
 class LineNumberArea(QWidget):

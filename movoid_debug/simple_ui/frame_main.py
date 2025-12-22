@@ -128,14 +128,10 @@ class FrameMainWindow(BasicMainWindow):
             init_ignore_level=stack.DEBUG,
             skip_ignore_level=stack.NO_SKIP,
             with_stack_level=True)
-        print(self._frame_list_all)
-        print(self._frame_list_ignore)
         self._frame_list: List[Tuple[StackFrame, int]] = self._frame_list_all
         self._index = 0
         self._execute_list: List[FrameExecute] = []
         self._current_execute = False
-
-        # self.testing = False
         self.init_ui()
         self.show()
         self.refresh_ui()
@@ -184,6 +180,7 @@ class FrameMainWindow(BasicMainWindow):
         history_tree.setObjectName('history_tree')
         history_layout.addWidget(history_tree)
         history_tree.header().setVisible(False)
+        history_tree.itemDoubleClicked.connect(self.action_double_click_history_tree_item)
 
         terminal_splitter = QSplitter(Qt.Vertical, main_splitter)
         main_splitter.addWidget(terminal_splitter)
@@ -308,6 +305,7 @@ class FrameMainWindow(BasicMainWindow):
             history_tree.addTopLevelItem(history_item)
             history_item_code = QTreeWidgetItem(history_item, [_execute.script])
             history_item.addChild(history_item_code)
+            history_item.setData(0, Qt.UserRole, _index)
             for one_history in _execute.history:
                 one_history_item = QTreeWidgetItem(history_item, [f'{change_time_float_to_str(one_history[0])} {one_history[1]} {one_history[2]}'])
                 history_item.addChild(one_history_item)
@@ -348,6 +346,7 @@ class FrameMainWindow(BasicMainWindow):
 
     def action_double_click_frame_tree_item(self, item: QTreeWidgetItem):
         frame_tree: QTreeWidget = self.findChild(QTreeWidget, 'frame_tree')
+        terminal_input_text: CodeTextEdit = self.findChild(CodeTextEdit, 'terminal_input_text')
         item_is_top = True
         while True:
             if item.parent() is None:
@@ -360,6 +359,24 @@ class FrameMainWindow(BasicMainWindow):
         item.setExpanded(not item_is_top)
         frame_tree.setCurrentItem(item)
         self.refresh_var_tree()
+        frame_code_lines, frame_code_lineno = inspect.getsourcelines(self.frame.f_code)
+        terminal_input_text.setPlainText(''.join(frame_code_lines).strip('\n'))
+
+    def action_double_click_history_tree_item(self, item: QTreeWidgetItem):
+        history_tree: QTreeWidget = self.findChild(QTreeWidget, 'history_tree')
+        terminal_input_text: CodeTextEdit = self.findChild(CodeTextEdit, 'terminal_input_text')
+        item_is_top = True
+        while True:
+            if item.parent() is None:
+                break
+            else:
+                item = item.parent()
+                item_is_top = False
+        index = item.data(0, Qt.UserRole)
+        item.treeWidget().collapseAll()
+        item.setExpanded(not item_is_top)
+        history_tree.setCurrentItem(item)
+        terminal_input_text.insertPlainText(self._execute_list[index].script)
 
     def expand_global_var_tree_item_to_show_dir(self, item: QTreeWidgetItem):
         global_var_full_switch: QCheckBox = self.findChild(QCheckBox, 'global_var_full_switch')
@@ -401,6 +418,7 @@ class FrameMainWindow(BasicMainWindow):
         if self._current_execute:  # 如果已经有程序在运行了，那么先pass
             pass
         else:  # 如果没有程序在运行，那么就创建一个新的
+            terminal_input_text.clear()
             execute = FrameExecute(text, self.frame, self._index)
             self._execute_list.append(execute)
             execute.signal_terminal_start.connect(self.action_frame_execute_terminal_start)

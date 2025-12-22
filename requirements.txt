@@ -4,5 +4,6 @@ pytest
 requests
 pytest-html
 movoid_config
+movoid_log
 movoid_function>=1.8.2.4
 pyside6

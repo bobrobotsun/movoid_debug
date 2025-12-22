@@ -12,10 +12,12 @@ import math
 import sys
 import time
 import traceback
+from typing import Union, Tuple, Optional
 
 import movoid_function
 from movoid_config import Config
-from movoid_function import wraps, analyse_args_value_from_function, wraps_ori, adapt_call, STACK
+from movoid_function import wraps, analyse_args_value_from_function, wraps_ori, adapt_call, STACK, StackFrame
+from movoid_log import LogLevel
 
 from enum import Enum
 
@@ -71,6 +73,7 @@ class Flow:
         self.test = False
         self._raise_error = 0
         self.force_raise = 0
+        self.error_frame: Optional[StackFrame] = STACK.stack_frame
         self.raise_until_exit = False  # 这个参数不要开启，一旦修改为True，那么flow将尝试一直raise Error直到软件结束为止
         self.config = Config({
             'debug': {
@@ -135,7 +138,7 @@ class Flow:
         self.current_function.add_son(func)
         self.current_function = func
 
-    def print(self, *args, sep=' ', end='\n', level='info'):
+    def print(self, *args, sep=' ', end='\n', level: Union[str, int, LogLevel] = 'info'):
         """
         打印内容
         """
@@ -143,6 +146,7 @@ class Flow:
         sep = str(sep)
         end = str(end)
         print_text = (sep.join(text_list) + end).strip('\n')
+        level = LogLevel(level)
         self.current_function.add_son(print_text, ('print', level))
 
     def web_pic(self, url):
@@ -243,36 +247,7 @@ class Flow:
             raise DebugError(*temp)
 
     def get_error_step(self):
-        temp_traceback = sys.exc_info()[2]
-        while temp_traceback.tb_next is not None:
-            temp_traceback = temp_traceback.tb_next
-        # temp_traceback.with_traceback()
-        temp_frame = temp_traceback.tb_frame
-        temp_code = temp_frame.f_code
-        self.final_frame = temp_frame
-        self.final_code = temp_code
-        self.final_lines, self.final_first_lineno = inspect.getsourcelines(temp_code)
-
-        # traceback.print_exc()
-        # temp_frame = inspect.currentframe()
-        # last_file = pathlib.Path(temp_frame.f_code.co_filename)
-        # temp_frame = temp_frame.f_back
-        # while temp_frame is not None:
-        #     temp_code = temp_frame.f_code
-        #     print(temp_frame.f_trace_lines, temp_frame.f_trace_opcodes, temp_frame.f_trace, temp_frame, temp_code)
-        #     # print('line table', temp_code.co_linetable)
-        #     file_path_text = temp_frame.f_code.co_filename
-        #     file_path = pathlib.Path(file_path_text)
-        #     with file_path.open(mode='r', encoding='utf8') as f:
-        #         file_lines = f.readlines()
-        #     lineno = temp_code.co_firstlineno
-        #     print(file_lines[lineno - 2:lineno + 3])
-        #     with last_file.open(mode='r', encoding='utf8') as f:
-        #         last_file_lines = f.readlines()
-        #     lineno = temp_frame.f_lineno
-        #     print(last_file_lines[lineno - 2:lineno + 3])
-        #     last_file = pathlib.Path(temp_frame.f_code.co_filename)
-        #     temp_frame = temp_frame.f_back
+        self.error_frame: StackFrame = STACK.get_frame(0)
 
 
 class BasicFunction:
@@ -350,14 +325,14 @@ class BasicFunction:
                 re_value = f'return({type(self.re_value).__name__}): {self.re_value}' if tostring else self.re_value
         elif self.traceback:
             if simple:
-                re_value = f'{type(self.error).__name__}:{self.error}' if tostring else self.error
+                re_value = f'{type(self.error).__name__}:{self.flow.return_str_in_size(self.error)}' if tostring else self.error
             else:
                 re_value = self.traceback
         else:
             re_value = 'running'
         return re_value
 
-    def add_son(self, son, son_type='function'):
+    def add_son(self, son, son_type: Union[str, Tuple[str, LogLevel]] = 'function'):
         """
         当函数没有运行完毕时，如果执行了其他函数，那么需要把这些函数归类为自己的子函数
         son：目标元素
@@ -699,9 +674,9 @@ def teardown(func):
     return wrapper
 
 
-STACK.this_file_lineno_should_ignore(416, check_text='return test(*args, **kwargs, _debug_default=debug_default, _debug_debug=debug_debug, _force_raise=force_raise)')
-STACK.this_file_lineno_should_ignore(426, check_text='re_value = self.func(*self.args, **self.kwargs)')
-STACK.this_file_lineno_should_ignore(485, check_text='return self.ori(*args, _debug_default=debug_default, _debug_debug=debug_debug, _force_raise=force_raise, **kwargs)')
-STACK.this_file_lineno_should_ignore(495, check_text='re_value = self.func(*args, **kwargs)')
-STACK.this_file_lineno_should_ignore(589, check_text='re_value = temp(*args, **kwargs)')
+STACK.this_file_lineno_should_ignore(391, check_text='return test(*args, **kwargs, _debug_default=debug_default, _debug_debug=debug_debug, _force_raise=force_raise)')
+STACK.this_file_lineno_should_ignore(401, check_text='re_value = self.func(*self.args, **self.kwargs)')
+STACK.this_file_lineno_should_ignore(460, check_text='return self.ori(*args, _debug_default=debug_default, _debug_debug=debug_debug, _force_raise=force_raise, **kwargs)')
+STACK.this_file_lineno_should_ignore(470, check_text='re_value = self.func(*args, **kwargs)')
+STACK.this_file_lineno_should_ignore(564, check_text='re_value = temp(*args, **kwargs)')
 STACK.this_file_lineno_should_ignore(None, ignore_level=movoid_function.stack.DEBUG)
