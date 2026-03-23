@@ -680,7 +680,7 @@ def teardown(func):
 
 STACK.this_file_lineno_should_ignore(391, check_text='return test(*args, **kwargs, _debug_default=debug_default, _debug_debug=debug_debug, _force_raise=force_raise)')
 STACK.this_file_lineno_should_ignore(401, check_text='re_value = self.func(*self.args, **self.kwargs)')
-STACK.this_file_lineno_should_ignore(460, check_text='return self.ori(*args, _debug_default=debug_default, _debug_debug=debug_debug, _force_raise=force_raise, **kwargs)')
-STACK.this_file_lineno_should_ignore(470, check_text='re_value = self.func(*args, **kwargs)')
-STACK.this_file_lineno_should_ignore(564, check_text='re_value = temp(*args, **kwargs)')
+STACK.this_file_lineno_should_ignore(462, check_text='return self.ori(*args, _debug_default=debug_default, _debug_debug=debug_debug, _force_raise=force_raise, **kwargs)')
+STACK.this_file_lineno_should_ignore(472, check_text='re_value = self.func(*args, **kwargs)')
+STACK.this_file_lineno_should_ignore(568, check_text='re_value = temp(*args, **kwargs)')
 STACK.this_file_lineno_should_ignore(None, ignore_level=movoid_function.stack.DEBUG)
