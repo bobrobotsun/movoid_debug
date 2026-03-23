@@ -429,8 +429,10 @@ class FlowFunction(BasicFunction):
                 self.end = True
                 self.flow.current_function_end()
                 self.time_all_end = time.time()
-                if self.has_return:
-                    return self.re_value
+            if self.has_return:
+                return self.re_value
+            else:
+                return None
 
 
 class TestFunction(BasicFunction):
@@ -502,8 +504,10 @@ class TestFunction(BasicFunction):
                 self.end = True
                 self.flow.current_function_end()
                 self.time_all_end = time.time()
-                if self.has_return:
-                    return self.re_value
+            if self.has_return:
+                return self.re_value
+            else:
+                return None
 
 
 class TestError(Exception):
