@@ -122,12 +122,16 @@ class FrameMainWindow(BasicMainWindow):
             stacklevel=_stack_level,
             init_ignore_level=stack.DEBUG,
             skip_ignore_level=stack.DECORATOR,
-            with_stack_level=True)
+            with_stack_level=True,
+            from_error=True,
+        )
         self._frame_list_all: List[Tuple[StackFrame, int]] = STACK.get_frame_list(
             stacklevel=_stack_level,
             init_ignore_level=stack.DEBUG,
             skip_ignore_level=stack.NO_SKIP,
-            with_stack_level=True)
+            with_stack_level=True,
+            from_error=True,
+        )
         self._frame_list: List[Tuple[StackFrame, int]] = self._frame_list_all
         self._index = 0
         self._execute_list: List[FrameExecute] = []
@@ -262,7 +266,7 @@ class FrameMainWindow(BasicMainWindow):
         frame_selected = True
         for _list_index, _frame_list in enumerate(self._frame_list):
             _stack_frame, _frame_index = _frame_list
-            _frame=_stack_frame.frame
+            _frame = _stack_frame.frame
             frame_file_path = pathlib.Path(_frame.f_code.co_filename)
             frame_code_lines, frame_code_lineno = inspect.getsourcelines(_frame.f_code)
             frame_code_text = ''.join(frame_code_lines).strip('\n')

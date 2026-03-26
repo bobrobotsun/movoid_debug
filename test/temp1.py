@@ -26,24 +26,28 @@ def test1():
 
 @dec1
 def test2():
+    reading = 1
     print('test2')
     raise Exception('wrong')
 
 
-try:
-    sys_exc_info = sys.exc_info()
-    exc_type, exc_value, exc_traceback = sys_exc_info
-    print(exc_type, exc_value, exc_traceback)
-    test1()
-except:
-    sys_exc_info = sys.exc_info()
-    exc_type, exc_value, exc_traceback = sys.exc_info()
-    print(type(sys_exc_info), len(sys_exc_info))
-    print(exc_type, exc_value, exc_traceback)
-    temp_traceback: traceback = exc_traceback
-    while temp_traceback is not None:
-        print(temp_traceback.tb_frame, temp_traceback.tb_lineno)
-        temp_traceback = temp_traceback.tb_next
+if __name__ == '__main__':
+    try:
+        test2()
+        sys_exc_info = sys.exc_info()
+        exc_type, exc_value, exc_traceback = sys_exc_info
+        print(exc_type, exc_value, exc_traceback)
+        test1()
+    except:
+        sys_exc_info = sys.exc_info()
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        print(type(sys_exc_info), len(sys_exc_info))
+        print(exc_type, exc_value, exc_traceback)
+        temp_traceback: traceback = exc_traceback
+        while temp_traceback is not None:
+            print(temp_traceback.tb_frame, temp_traceback.tb_lineno)
+            print(temp_traceback.tb_frame.f_locals)
+            temp_traceback = temp_traceback.tb_next
     # for i in dir(exc_traceback):
     #     v = getattr(exc_traceback, i)
     #     if callable(v):
