@@ -151,117 +151,121 @@ class FrameMainWindow(BasicMainWindow):
     def init_ui(self):
         screen_rect = QApplication.primaryScreen().geometry()
         self.setGeometry(int(screen_rect.width() * 0), int(screen_rect.height() * 0), int(screen_rect.width() * 0.8), int(screen_rect.height() * 0.6))
-        main_splitter = QSplitter(self)
-        self.setCentralWidget(main_splitter)
+        self.q_main_splitter = QSplitter(self)
+        self.setCentralWidget(self.q_main_splitter)
         # main_splitter = self
 
         # frame area 放frame区域的
-        frame_area = QWidget(main_splitter)
-        main_splitter.addWidget(frame_area)
-        main_splitter.setStretchFactor(0, 1)
-        frame_layout = QVBoxLayout(frame_area)
-        frame_area.setLayout(frame_layout)
+        self.q_frame_area = QWidget(self.q_main_splitter)
+        self.q_main_splitter.addWidget(self.q_frame_area)
+        self.q_main_splitter.setStretchFactor(0, 1)
+        self.q_frame_layout = QVBoxLayout(self.q_frame_area)
+        self.q_frame_area.setLayout(self.q_frame_layout)
         # 切换frame是否全部显示
-        frame_wrap_switch = QCheckBox('show wrap frame')
-        frame_wrap_switch.setObjectName('frame_wrap_switch')
-        frame_layout.addWidget(frame_wrap_switch)
-        frame_wrap_switch.setChecked(False)
-        frame_wrap_switch.setToolTip('关闭后会隐藏因为装饰器而产生的frame')
-        frame_wrap_switch.stateChanged.connect(self.refresh_frame_tree)
+        self.q_frame_wrap_switch = QCheckBox('show wrap frame')
+        self.q_frame_wrap_switch.setObjectName('frame_wrap_switch')
+        self.q_frame_layout.addWidget(self.q_frame_wrap_switch)
+        self.q_frame_wrap_switch.setChecked(False)
+        self.q_frame_wrap_switch.setToolTip('关闭后会隐藏因为装饰器而产生的frame')
+        self.q_frame_wrap_switch.stateChanged.connect(self.refresh_frame_tree)
 
-        frame_tree = QTreeWidget(frame_area)
-        frame_tree.setObjectName('frame_tree')
-        frame_layout.addWidget(frame_tree)
-        frame_tree.itemDoubleClicked.connect(self.action_double_click_frame_tree_item)
-        frame_tree.header().setVisible(False)
+        self.q_frame_tree = QTreeWidget(self.q_frame_area)
+        self.q_frame_tree.setObjectName('frame_tree')
+        self.q_frame_layout.addWidget(self.q_frame_tree)
+        self.q_frame_tree.itemDoubleClicked.connect(self.action_double_click_frame_tree_item)
+        self.q_frame_tree.header().setVisible(False)
 
-        history_area = QWidget(main_splitter)
-        main_splitter.addWidget(history_area)
-        main_splitter.setStretchFactor(1, 1)
-        history_layout = QVBoxLayout(history_area)
-        history_area.setLayout(history_layout)
-        history_tree = QTreeWidget(history_area)
-        history_tree.setObjectName('history_tree')
-        history_layout.addWidget(history_tree)
-        history_tree.header().setVisible(False)
-        history_tree.itemDoubleClicked.connect(self.action_double_click_history_tree_item)
+        self.q_history_area = QWidget(self.q_main_splitter)
+        self.q_main_splitter.addWidget(self.q_history_area)
+        self.q_main_splitter.setStretchFactor(1, 1)
+        self.q_history_layout = QVBoxLayout(self.q_history_area)
+        self.q_history_area.setLayout(self.q_history_layout)
+        self.q_history_tree = QTreeWidget(self.q_history_area)
+        self.q_history_tree.setObjectName('history_tree')
+        self.q_history_layout.addWidget(self.q_history_tree)
+        self.q_history_tree.header().setVisible(False)
+        self.q_history_tree.itemDoubleClicked.connect(self.action_double_click_history_tree_item)
 
-        terminal_splitter = QSplitter(Qt.Vertical, main_splitter)
-        main_splitter.addWidget(terminal_splitter)
-        main_splitter.setStretchFactor(2, 1)
+        self.q_terminal_splitter = QSplitter(Qt.Vertical, self.q_main_splitter)
+        self.q_main_splitter.addWidget(self.q_terminal_splitter)
+        self.q_main_splitter.setStretchFactor(2, 1)
 
-        terminal_info_text = QTextEdit(terminal_splitter)
-        terminal_info_text.setReadOnly(True)
-        terminal_info_text.setObjectName('terminal_info_text')
-        terminal_splitter.addWidget(terminal_info_text)
-        terminal_splitter.setStretchFactor(0, 1)
+        self.q_terminal_info_text = QTextEdit(self.q_terminal_splitter)
+        self.q_terminal_info_text.setReadOnly(True)
+        self.q_terminal_info_text.setObjectName('terminal_info_text')
+        self.q_terminal_splitter.addWidget(self.q_terminal_info_text)
+        self.q_terminal_splitter.setStretchFactor(0, 1)
 
-        terminal_input_text = CodeTextEdit(terminal_splitter)
-        terminal_input_text.setObjectName('terminal_input_text')
-        terminal_splitter.addWidget(terminal_input_text)
-        terminal_input_text.signal_shift_enter.connect(self.action_click_terminal_button_enter)
-        terminal_splitter.setStretchFactor(1, 1)
+        self.q_terminal_input_text = CodeTextEdit(self.q_terminal_splitter)
+        self.q_terminal_input_text.setObjectName('terminal_input_text')
+        self.q_terminal_splitter.addWidget(self.q_terminal_input_text)
+        self.q_terminal_input_text.signal_shift_enter.connect(self.action_click_terminal_button_enter)
+        self.q_terminal_splitter.setStretchFactor(1, 1)
 
-        terminal_button_area = QWidget(terminal_splitter)
-        terminal_button_area.setObjectName('terminal_button_area')
-        terminal_splitter.addWidget(terminal_button_area)
-        terminal_splitter.setStretchFactor(2, 0)
-        terminal_button_layout = QVBoxLayout(terminal_button_area)
-        terminal_button_area.setLayout(terminal_button_layout)
-        terminal_button_enter = QPushButton('Enter', terminal_button_area)
-        terminal_button_enter.setObjectName('terminal_button_enter')
-        terminal_button_layout.addWidget(terminal_button_enter)
-        terminal_button_enter.clicked.connect(self.action_click_terminal_button_enter)
+        self.q_terminal_button_area = QWidget(self.q_terminal_splitter)
+        self.q_terminal_button_area.setObjectName('terminal_button_area')
+        self.q_terminal_splitter.addWidget(self.q_terminal_button_area)
+        self.q_terminal_splitter.setStretchFactor(2, 0)
+        self.q_terminal_button_layout = QVBoxLayout(self.q_terminal_button_area)
+        self.q_terminal_button_area.setLayout(self.q_terminal_button_layout)
+        self.q_terminal_button_enter = QPushButton('Enter', self.q_terminal_button_area)
+        self.q_terminal_button_enter.setObjectName('terminal_button_enter')
+        self.q_terminal_button_layout.addWidget(self.q_terminal_button_enter)
+        self.q_terminal_button_enter.clicked.connect(self.action_click_terminal_button_enter)
 
-        var_splitter = QSplitter(Qt.Vertical, main_splitter)
-        global_var_group_box = QGroupBox('global', var_splitter)
-        global_var_group_box_layout = QVBoxLayout(global_var_group_box)
-        global_var_group_box.setLayout(global_var_group_box_layout)
-        global_var_full_switch = QCheckBox('show all variables')
-        global_var_full_switch.setObjectName('global_var_full_switch')
-        global_var_group_box_layout.addWidget(global_var_full_switch)
-        global_var_full_switch.setChecked(False)
-        global_var_full_switch.setToolTip('选中后可以选择所有__xxx__类型的变量')
-        global_var_full_switch.stateChanged.connect(self.refresh_global_var_tree)
-        global_var_tree = QTreeWidget(var_splitter)
-        global_var_tree.setObjectName('global_var_tree')
-        global_var_group_box_layout.addWidget(global_var_tree)
-        var_splitter.setStretchFactor(0, 1)
-        global_var_tree.setHeaderLabels(['name', 'type', 'value'])
-        global_var_tree.itemExpanded.connect(self.expand_global_var_tree_item_to_show_dir)
+        self.q_var_splitter = QSplitter(Qt.Vertical, self.q_main_splitter)
+        self.q_global_var_group_box = QGroupBox('global', self.q_var_splitter)
+        self.q_global_var_group_box_layout = QVBoxLayout(self.q_global_var_group_box)
+        self.q_global_var_group_box.setLayout(self.q_global_var_group_box_layout)
+        self.q_global_var_full_switch = QCheckBox('show all variables')
+        self.q_global_var_full_switch.setObjectName('global_var_full_switch')
+        self.q_global_var_group_box_layout.addWidget(self.q_global_var_full_switch)
+        self.q_global_var_full_switch.setChecked(False)
+        self.q_global_var_full_switch.setToolTip('选中后可以选择所有__xxx__类型的变量')
+        self.q_global_var_full_switch.stateChanged.connect(self.refresh_global_var_tree)
+        self.q_global_var_refresh=QPushButton('refresh')
+        self.q_global_var_group_box_layout.addWidget(self.q_global_var_refresh)
+        self.q_global_var_refresh.clicked.connect(self.refresh_global_var_tree)
+        self.q_global_var_tree = QTreeWidget(self.q_var_splitter)
+        self.q_global_var_tree.setObjectName('global_var_tree')
+        self.q_global_var_group_box_layout.addWidget(self.q_global_var_tree)
+        self.q_var_splitter.setStretchFactor(0, 1)
+        self.q_global_var_tree.setHeaderLabels(['name', 'type', 'value'])
+        self.q_global_var_tree.itemExpanded.connect(self.expand_global_var_tree_item_to_show_dir)
 
-        local_var_group_box = QGroupBox('local', var_splitter)
-        local_var_group_box_layout = QVBoxLayout(local_var_group_box)
-        local_var_group_box.setLayout(local_var_group_box_layout)
-        local_var_full_switch = QCheckBox('show all variables')
-        local_var_full_switch.setObjectName('local_var_full_switch')
-        local_var_group_box_layout.addWidget(local_var_full_switch)
-        local_var_full_switch.setChecked(False)
-        local_var_full_switch.setToolTip('选中后可以选择所有__xxx__类型的变量')
-        local_var_full_switch.stateChanged.connect(self.refresh_local_var_tree)
-        local_var_tree = QTreeWidget(var_splitter)
-        local_var_tree.setObjectName('local_var_tree')
-        local_var_group_box_layout.addWidget(local_var_tree)
-        var_splitter.setStretchFactor(1, 1)
-        local_var_tree.setHeaderLabels(['name', 'type', 'value'])
-        local_var_tree.itemExpanded.connect(self.expand_local_var_tree_item_to_show_dir)
-        main_splitter.addWidget(var_splitter)
-        main_splitter.setStretchFactor(3, 1)
+        self.q_local_var_group_box = QGroupBox('local', self.q_var_splitter)
+        self.q_local_var_group_box_layout = QVBoxLayout(self.q_local_var_group_box)
+        self.q_local_var_group_box.setLayout(self.q_local_var_group_box_layout)
+        self.q_local_var_full_switch = QCheckBox('show all variables')
+        self.q_local_var_full_switch.setObjectName('local_var_full_switch')
+        self.q_local_var_group_box_layout.addWidget(self.q_local_var_full_switch)
+        self.q_local_var_full_switch.setChecked(False)
+        self.q_local_var_full_switch.setToolTip('选中后可以选择所有__xxx__类型的变量')
+        self.q_local_var_full_switch.stateChanged.connect(self.refresh_local_var_tree)
+        self.q_local_var_refresh=QPushButton('refresh')
+        self.q_local_var_group_box_layout.addWidget(self.q_local_var_refresh)
+        self.q_local_var_refresh.clicked.connect(self.refresh_local_var_tree)
+        self.q_local_var_tree = QTreeWidget(self.q_var_splitter)
+        self.q_local_var_tree.setObjectName('local_var_tree')
+        self.q_local_var_group_box_layout.addWidget(self.q_local_var_tree)
+        self.q_var_splitter.setStretchFactor(1, 1)
+        self.q_local_var_tree.setHeaderLabels(['name', 'type', 'value'])
+        self.q_local_var_tree.itemExpanded.connect(self.expand_local_var_tree_item_to_show_dir)
+        self.q_main_splitter.addWidget(self.q_var_splitter)
+        self.q_main_splitter.setStretchFactor(3, 1)
 
     def refresh_ui(self):
         self.refresh_frame_tree()
         self.refresh_history_tree()
 
     def refresh_frame_tree(self):
-        frame_tree: QTreeWidget = self.findChild(QTreeWidget, 'frame_tree')
-        frame_wrap_switch: QCheckBox = self.findChild(QCheckBox, 'frame_wrap_switch')
-        frame_wrap_switch_state = frame_wrap_switch.isChecked()
+        frame_wrap_switch_state = self.q_frame_wrap_switch.isChecked()
         frame_index = self.frame_index
         if frame_wrap_switch_state:
             self._frame_list = self._frame_list_all
         else:
             self._frame_list = self._frame_list_ignore
-        frame_tree.clear()
+        self.q_frame_tree.clear()
         main_file_path = pathlib.Path(sys.argv[0]).parent
         frame_selected = True
         for _list_index, _frame_list in enumerate(self._frame_list):
@@ -270,8 +274,8 @@ class FrameMainWindow(BasicMainWindow):
             frame_file_path = pathlib.Path(_frame.f_code.co_filename)
             frame_code_lines, frame_code_lineno = inspect.getsourcelines(_frame.f_code)
             frame_code_text = ''.join(frame_code_lines).strip('\n')
-            frame_item = QTreeWidgetItem(frame_tree, [f'{_frame_index} {_stack_frame.info()}'])
-            frame_tree.addTopLevelItem(frame_item)
+            frame_item = QTreeWidgetItem(self.q_frame_tree, [f'{_frame_index} {_stack_frame.info()}'])
+            self.q_frame_tree.addTopLevelItem(frame_item)
             frame_item.setData(0, Qt.UserRole, _list_index)
             if frame_selected and _frame_index >= frame_index:
                 self._index = _list_index
@@ -288,25 +292,23 @@ class FrameMainWindow(BasicMainWindow):
             frame_item.addChild(frame_item_code)
         if frame_selected:
             self._index = len(self._frame_list) - 1
-        select = frame_tree.topLevelItem(self._index)
-        frame_tree.setCurrentItem(select)
+        select = self.q_frame_tree.topLevelItem(self._index)
+        self.q_frame_tree.setCurrentItem(select)
         self.refresh_var_tree()
 
     def refresh_history_tree(self):
-        history_tree: QTreeWidget = self.findChild(QTreeWidget, 'history_tree')
-        history_tree.clear()
+        self.q_history_tree.clear()
         self.update_history_tree()
 
     def update_history_tree(self):
-        history_tree: QTreeWidget = self.findChild(QTreeWidget, 'history_tree')
-        children_count = history_tree.topLevelItemCount()
+        children_count = self.q_history_tree.topLevelItemCount()
         for _index, _execute in enumerate(self._execute_list[children_count:]):
             _index = _index + children_count
             simple_code = _execute.script.strip().split('\n')[0]
             if len(simple_code) > 40:
                 simple_code = simple_code[:40] + '...'
-            history_item = QTreeWidgetItem(history_tree, [f'{_index} {change_time_float_to_str(_execute.start_time)} {_execute.index} {simple_code}'])
-            history_tree.addTopLevelItem(history_item)
+            history_item = QTreeWidgetItem(self.q_history_tree, [f'{_index} {change_time_float_to_str(_execute.start_time)} {_execute.index} {simple_code}'])
+            self.q_history_tree.addTopLevelItem(history_item)
             history_item_code = QTreeWidgetItem(history_item, [_execute.script])
             history_item.addChild(history_item_code)
             history_item.setData(0, Qt.UserRole, _index)
@@ -327,30 +329,24 @@ class FrameMainWindow(BasicMainWindow):
         self.refresh_local_var_tree()
 
     def refresh_global_var_tree(self):
-        global_var_tree: QTreeWidget = self.findChild(QTreeWidget, 'global_var_tree')
-        global_var_full_switch: QCheckBox = self.findChild(QCheckBox, 'global_var_full_switch')
-        global_var_tree.clear()
+        self.q_global_var_tree.clear()
         for _name, _value in self.frame.f_globals.items():
-            if global_var_full_switch.isChecked() or not (_name.startswith('__') and _name.endswith('__')):
-                global_var_item = QTreeWidgetItem(global_var_tree, [_name, type(_value).__name__, str(_value)])
-                global_var_tree.addTopLevelItem(global_var_item)
+            if self.q_global_var_full_switch.isChecked() or not (_name.startswith('__') and _name.endswith('__')):
+                global_var_item = QTreeWidgetItem(self.q_global_var_tree, [_name, type(_value).__name__, str(_value)])
+                self.q_global_var_tree.addTopLevelItem(global_var_item)
                 setattr(global_var_item, '__tree_object', _value)
                 tree_item_can_expand(global_var_item)
 
     def refresh_local_var_tree(self):
-        local_var_tree: QTreeWidget = self.findChild(QTreeWidget, 'local_var_tree')
-        local_var_full_switch: QCheckBox = self.findChild(QCheckBox, 'local_var_full_switch')
-        local_var_tree.clear()
+        self.q_local_var_tree.clear()
         for _name, _value in self.frame.f_locals.items():
-            if local_var_full_switch.isChecked() or not (_name.startswith('__') and _name.endswith('__')):
-                local_var_item = QTreeWidgetItem(local_var_tree, [_name, type(_value).__name__, str(_value)])
-                local_var_tree.addTopLevelItem(local_var_item)
+            if self.q_local_var_full_switch.isChecked() or not (_name.startswith('__') and _name.endswith('__')):
+                local_var_item = QTreeWidgetItem(self.q_local_var_tree, [_name, type(_value).__name__, str(_value)])
+                self.q_local_var_tree.addTopLevelItem(local_var_item)
                 setattr(local_var_item, '__tree_object', _value)
                 tree_item_can_expand(local_var_item)
 
     def action_double_click_frame_tree_item(self, item: QTreeWidgetItem):
-        frame_tree: QTreeWidget = self.findChild(QTreeWidget, 'frame_tree')
-        terminal_input_text: CodeTextEdit = self.findChild(CodeTextEdit, 'terminal_input_text')
         item_is_top = True
         while True:
             if item.parent() is None:
@@ -361,14 +357,12 @@ class FrameMainWindow(BasicMainWindow):
         self._index = item.data(0, Qt.UserRole)
         item.treeWidget().collapseAll()
         item.setExpanded(not item_is_top)
-        frame_tree.setCurrentItem(item)
+        self.q_frame_tree.setCurrentItem(item)
         self.refresh_var_tree()
         frame_code_lines, frame_code_lineno = inspect.getsourcelines(self.frame.f_code)
-        terminal_input_text.setPlainText(''.join(frame_code_lines).strip('\n'))
+        self.q_terminal_input_text.setPlainText(''.join(frame_code_lines).strip('\n'))
 
     def action_double_click_history_tree_item(self, item: QTreeWidgetItem):
-        history_tree: QTreeWidget = self.findChild(QTreeWidget, 'history_tree')
-        terminal_input_text: CodeTextEdit = self.findChild(CodeTextEdit, 'terminal_input_text')
         item_is_top = True
         while True:
             if item.parent() is None:
@@ -379,11 +373,10 @@ class FrameMainWindow(BasicMainWindow):
         index = item.data(0, Qt.UserRole)
         item.treeWidget().collapseAll()
         item.setExpanded(not item_is_top)
-        history_tree.setCurrentItem(item)
-        terminal_input_text.insertPlainText(self._execute_list[index].script)
+        self.q_history_tree.setCurrentItem(item)
+        self.q_terminal_input_text.insertPlainText(self._execute_list[index].script)
 
     def expand_global_var_tree_item_to_show_dir(self, item: QTreeWidgetItem):
-        global_var_full_switch: QCheckBox = self.findChild(QCheckBox, 'global_var_full_switch')
         expand_tree_item_to_show_dir(
             item,
             {
@@ -391,11 +384,10 @@ class FrameMainWindow(BasicMainWindow):
                 1: lambda k, v: type(v).__name__,
                 2: lambda k, v: str(v),
             },
-            show_all=global_var_full_switch.isChecked(),
+            show_all=self.q_global_var_full_switch.isChecked(),
         )
 
     def expand_local_var_tree_item_to_show_dir(self, item: QTreeWidgetItem):
-        local_var_full_switch: QCheckBox = self.findChild(QCheckBox, 'local_var_full_switch')
         expand_tree_item_to_show_dir(
             item,
             {
@@ -403,7 +395,7 @@ class FrameMainWindow(BasicMainWindow):
                 1: lambda k, v: type(v).__name__,
                 2: lambda k, v: str(v),
             },
-            show_all=local_var_full_switch.isChecked(),
+            show_all=self.q_local_var_full_switch.isChecked(),
         )
 
     def expand_tree_item_to_show_dir(self, item: QTreeWidgetItem):
@@ -417,12 +409,11 @@ class FrameMainWindow(BasicMainWindow):
         )
 
     def action_click_terminal_button_enter(self):
-        terminal_input_text: QTextEdit = self.findChild(QTextEdit, 'terminal_input_text')
-        text = terminal_input_text.toPlainText()
+        text = self.q_terminal_input_text.toPlainText()
         if self._current_execute:  # 如果已经有程序在运行了，那么先pass
             pass
         else:  # 如果没有程序在运行，那么就创建一个新的
-            terminal_input_text.clear()
+            self.q_terminal_input_text.clear()
             execute = FrameExecute(text, self.frame, self._index)
             self._execute_list.append(execute)
             execute.signal_terminal_start.connect(self.action_frame_execute_terminal_start)
@@ -438,7 +429,6 @@ class FrameMainWindow(BasicMainWindow):
         self.update_history_tree()
 
     def action_frame_execute_text_new(self, new_time, style, text):
-        terminal_info_text: QTextEdit = self.findChild(QTextEdit, 'terminal_info_text')
-        terminal_info_text.append(f'{change_time_float_to_str(new_time)} {style} {text}')
-        terminal_info_text.repaint()
+        self.q_terminal_info_text.append(f'{change_time_float_to_str(new_time)} {style} {text}')
+        self.q_terminal_info_text.repaint()
         QApplication.processEvents()
