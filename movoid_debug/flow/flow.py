@@ -89,6 +89,12 @@ class Flow:
                 "key": "debug_flag",
                 'ini': ['debug', 'flag'],
             },
+            'memory': {
+                "type": "int",
+                "default": 0,
+                "key": "memory",
+                'ini': ['debug', 'memory'],
+            },
             'ui_str_size': {
                 "type": "int",
                 "default": 40,
@@ -162,6 +168,8 @@ class Flow:
         if self.current_function is None:
             raise Exception('已经退出了所有的结算函数，并且额外执行了一次current_function_end')
         else:
+            if self.config.memory == 0:
+                self.current_function.son.clear()
             self.current_function = self.current_function.parent
 
     def when_error(self, *debug_flag, force_raise=None, err=None, trace_back=None):
